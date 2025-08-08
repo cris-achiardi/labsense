@@ -13,7 +13,7 @@ Intelligent lab result analysis for Chilean healthcare - automatically flags cri
 ### Project Story
 
 #### Inspiration
-At Chile's public primary care centers, routine blood tests expire after 12 months—even when initial results already show high glucose, cholesterol, triglycerides, liver enzymes or other health markers. Patients can wait an entire year for a retest, during which untreated risk factors may progress to diabetes, heart disease, kidney failure or stroke. Meanwhile, care teams spend hours each day manually reviewing thousands of lab reports—a job an AI could finish in minutes. This needless cycle delays treatment, worsens outcomes, increases public healthcare spending (funds that could go toward direct patient care, facility upgrades or preventive programs) and keeps clinicians tied up in administrative work instead of caring for people.
+At Chile's public primary care centers, routine blood tests expire after 12 months—even when initial results already show high glucose, cholesterol, triglycerides, liver enzymes or other health markers. Patients can wait an entire year for a retest, during which untreated risk factors may progress to diabetes, heart disease, kidney failure or stroke. Meanwhile, care teams spend hours each day manually reviewing thousands of lab reports. A job an automation could finish in minutes. This needless cycle delays treatment, worsens health outcomes, increases public healthcare spending (funds that could go toward direct patient care, facility upgrades or preventive programs) and keeps clinicians tied up in administrative work instead of caring for people.
 
 #### What it does
 
@@ -96,11 +96,77 @@ The system correctly flagged this as HIGH priority, enabling immediate medical i
 - **Computer Vision**: Direct image analysis of lab reports for better data extraction
 - **Clinical Decision Support**: AI-powered recommendations for follow-up care based on patient patterns
 
-LabSense doesn't just digitize lab results—it intelligently prioritizes human health, ensuring that no critical value goes unnoticed and no patient waits unnecessarily for life-changing medical care. The current rule-based intelligent system provides immediate value while establishing the foundation for advanced AI capabilities as the platform scales.
+LabSense doesn't just digitize lab results. It intelligently prioritizes human health, ensuring that no critical value goes unnoticed and no patient waits unnecessarily for life-changing medical care. The current rule-based intelligent system provides immediate value while establishing the foundation for advanced AI capabilities as the platform scales.
 
 #### How we built it
 
-[To be completed]
+**Team Composition**
+- **Juli**: Senior backend developer with expertise in similar healthcare projects
+- **Cris**: Product designer with basic HTML/CSS knowledge and experience in AI-assisted coding frameworks
+- **Background**: Both team members work at a health tech company serving the US market, bringing relevant domain knowledge to Chilean healthcare challenges
+
+**Development Approach with Kiro**
+
+**Requirements and Planning Phase**
+- Used Kiro's structured workflow to systematically define 14 comprehensive requirements
+- Leveraged our health tech experience to identify critical compliance needs (audit trails, data retention, security)
+- Applied EARS format for acceptance criteria to ensure clear, testable requirements
+- Iteratively refined requirements through Kiro-assisted conversations
+
+**Technical Architecture Design**
+- Selected proven tech stack based on team expertise: Next.js, Supabase, Vercel
+- Used Kiro to design TypeScript interfaces and database schemas
+- Applied healthcare compliance patterns from our professional experience
+- Designed modular architecture to support future development phases
+
+**Real-World Data Analysis**
+- Obtained actual Chilean lab report PDF for analysis
+- Used Kiro to help parse and extract text content from the PDF sample
+- Manually analyzed the structure to identify key patterns:
+  - Patient identification format (Chilean RUT: 7.236.426-0)
+  - 5-column lab structure: Examen|Resultado|Unidad|Valor de Referencia|Método
+  - Abnormal value indicators (`[ * ]` markers)
+  - Spanish medical terminology and date formats
+- Validated approach with real patient case showing severe diabetes and hypothyroidism
+
+**System Design Process**
+- Designed validation pipeline with 3-level approach (structural, content, healthcare logic)
+- Created confidence scoring system with practical thresholds (85% auto-approval)
+- Planned manual review interface for edge cases
+- Incorporated Spanish language support throughout the system
+
+**Documentation and Specs**
+- Created comprehensive project documentation using Kiro's guidance
+- Maintained detailed specs: requirements, technical design, PDF analysis, project status
+- Documented parsing patterns and validation strategies for implementation
+
+**Technology Stack Selected**
+```
+Frontend: Next.js 14+ with TypeScript and Spanish i18n
+Backend: Next.js API Routes with NextAuth for authentication
+Database: Supabase PostgreSQL with Row Level Security
+Storage: Supabase Storage for PDF files
+Deployment: Vercel
+Parsing: pdf-parse library with custom Spanish pattern recognition
+```
+
+**Current Development Status**
+- ✅ Requirements analysis and documentation complete
+- ✅ Technical architecture and database design finalized
+- ✅ Real Chilean lab PDF structure analyzed and patterns documented
+- ✅ Validation strategy designed with confidence scoring
+- ✅ Spanish language patterns and Chilean healthcare specifics identified
+- 🔄 Ready for UI design and implementation phases
+
+**Kiro's Role in Development**
+Kiro served as our AI pair programming partner, helping us:
+- Structure complex healthcare requirements systematically
+- Design comprehensive technical architecture
+- Analyze real-world data patterns efficiently
+- Create detailed documentation and specifications
+- Navigate healthcare compliance considerations
+
+The combination of our health tech domain expertise and Kiro's AI assistance allowed us to create a thorough, well-planned healthcare solution ready for implementation.
 
 #### Challenges we ran into
 
