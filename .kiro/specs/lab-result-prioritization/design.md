@@ -120,23 +120,44 @@ interface UserProfile {
 interface PDFProcessingModule {
   uploadPDF: (file: File, userId: string) => Promise<UploadResult>
   extractText: (pdfBuffer: Buffer) => Promise<string>
-  extractPatientInfo: (text: string) => Promise<PatientInfo>
+  extractPatientInfo: (text: string, pageNumber?: number) => Promise<PatientInfo>
   validatePDF: (file: File) => ValidationResult
   storePDF: (file: File, patientId: string) => Promise<string>
+  validateParsing: (extractedData: ParsedLabData, originalText: string) => Promise<ValidationResult>
 }
 
 interface UploadResult {
   success: boolean
   pdfId?: string
   patientInfo?: PatientInfo
+  validationResult?: ValidationResult
   errors?: string[]
 }
 
 interface PatientInfo {
   name?: string
   rut?: string
+  age?: string
+  sex?: string
+  folio?: string
+  solicitingDoctor?: string
+  fechaIngreso?: Date
+  tomaMuestra?: Date
+  fechaValidacion?: Date
+  procedencia?: string
   testDate?: Date
   laboratoryName?: string
+}
+
+interface ValidationResult {
+  confidence: number // 0-100
+  autoApproved: boolean
+  requiresManualReview: boolean
+  issues: string[]
+  criticalValueDetected: boolean
+  structuralIntegrity: number
+  contentAccuracy: number
+  healthcareLogicScore: number
 }
 ```
 
@@ -146,6 +167,8 @@ interface HealthMarkerParsingModule {
   parseHealthMarkers: (text: string) => Promise<HealthMarker[]>
   validateMarkerValues: (markers: HealthMarker[]) => ValidationResult
   extractNumericValues: (text: string, markerType: string) => MarkerValue[]
+  calculateConfidenceScore: (marker: HealthMarker, context: string) => number
+  validateHealthcareLogic: (markers: HealthMarker[]) => HealthcareValidation
 }
 
 interface HealthMarker {
@@ -155,14 +178,30 @@ interface HealthMarker {
   normalRange: NormalRange
   extractedText: string
   confidence: number
+  isAbnormal: boolean
+  abnormalIndicator?: string // [ * ] or other markers
+  severity?: 'normal' | 'mild' | 'moderate' | 'severe'
+  isCriticalValue: boolean
 }
 
 interface NormalRange {
-  min: number
-  max: number
+  min?: number
+  max?: number
   unit: string
-  source: string
+  source: string // 'pdf' | 'database' | 'manual'
+  rawText: string // Original reference text from PDF
   lastUpdated: Date
+}
+
+interface HealthcareValidation {
+  valuesWithinReasonableRanges: boolean
+  unitsMatchMarkers: boolean
+  criticalValueFlags: {
+    extremelyHighGlucose: boolean
+    extremelyLowValues: boolean
+    impossibleCombinations: boolean
+  }
+  medicalLogicScore: number
 }
 ```
 
@@ -401,6 +440,71 @@ interface TestDataFactory {
   createLabReport: (abnormalMarkers?: string[]) => LabReport
   createUserSession: (role: UserRole) => Session
   createSpanishLabReport: (markers: HealthMarker[]) => Buffer // Chilean lab format
+  createValidationTestCases: () => ValidationTestCase[]
+}
+
+interface ValidationTestCase {
+  name: string
+  pdfContent: string
+  expectedExtraction: ParsedLabData
+  expectedConfidence: number
+  shouldAutoApprove: boolean
+  criticalValues: boolean
+}
+```
+
+### Parse Validation Strategy
+
+#### Automated Validation Pipeline
+```typescript
+interface ParseValidationModule {
+  validateStructure: (pdfText: string, extractedData: ParsedLabData) => StructuralValidation
+  validateContent: (extractedData: ParsedLabData) => ContentValidation
+  validateHealthcareLogic: (extractedData: ParsedLabData) => HealthcareValidation
+  calculateOverallConfidence: (validations: ValidationResults) => number
+  determineReviewRequirement: (confidence: number, criticalValues: boolean) => ReviewRequirement
+}
+
+interface StructuralValidation {
+  pdfReadable: boolean
+  patientInfoPresent: boolean
+  labSectionsDetected: number
+  expectedHeadersFound: string[]
+  dateConsistency: boolean
+  score: number
+}
+
+interface ContentValidation {
+  patientDataComplete: {
+    rut: boolean
+    name: boolean
+    age: boolean
+    sex: boolean
+    folio: boolean
+  }
+  labResultsValid: {
+    hasNumericValues: boolean
+    hasUnits: boolean
+    hasReferenceRanges: boolean
+    abnormalFlagsDetected: boolean
+  }
+  score: number
+}
+
+interface ReviewRequirement {
+  autoApproved: boolean // confidence >= 85%
+  requiresSpotCheck: boolean // confidence 70-84%
+  requiresManualReview: boolean // confidence < 70%
+  criticalValueOverride: boolean // critical values always need validation
+}
+```
+
+#### Optimization: First Page Patient Parsing
+```typescript
+interface OptimizedPDFParser {
+  parsePatientInfoFromFirstPage: (pdfPages: string[]) => PatientInfo
+  parseLabResultsFromAllPages: (pdfPages: string[]) => HealthMarker[]
+  avoidDuplicatePatientData: (extractedData: ParsedLabData) => ParsedLabData
 }
 ```
 

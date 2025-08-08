@@ -46,6 +46,17 @@
   - Extracted Spanish health marker terminology and patterns
   - Validated priority scoring with severe diabetes + hypothyroidism case
   - Confirmed reference ranges provided in PDF (no external database needed)
+  - Identified patient data duplication across pages (parse only first page)
+
+### ✅ Parse Validation Strategy
+- **Status:** Comprehensive validation framework defined
+- **Key Components:**
+  - **Automated Validation Pipeline**: 3-level validation (structural, content, healthcare logic)
+  - **Confidence Scoring**: 0-100% confidence with auto-approval thresholds
+  - **Critical Value Detection**: Special validation for dangerous values (glucose >250, HbA1c >10)
+  - **Manual Review Interface**: Side-by-side PDF comparison for low-confidence cases
+  - **Quality Assurance**: Metrics tracking and continuous improvement
+  - **Optimization**: Parse patient identification only from first page to avoid duplication
 
 ## Next Steps Required
 
@@ -127,10 +138,14 @@
 ## Key Considerations for Implementation
 
 ### MVP Focus
-- Core functionality: PDF upload → parse → flag → prioritize
+- Core functionality: PDF upload → parse → validate → flag → prioritize
 - Spanish language support from day one (patterns documented)
 - Use PDF-provided reference ranges (no external database needed)
+- Automated validation with 85% auto-approval threshold
+- Manual review interface for low-confidence cases
+- Critical value detection and special validation
 - Priority scoring validated with real patient case
+- Parse optimization (patient data from first page only)
 - Basic but functional UI
 - Essential security and audit features
 

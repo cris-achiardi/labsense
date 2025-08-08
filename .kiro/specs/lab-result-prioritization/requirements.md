@@ -40,16 +40,22 @@ The Lab Result Prioritization System is a web application designed for Chile's p
 
 ### Requirement 3
 
-**User Story:** As a primary care worker, I want the system to automatically parse uploaded lab reports and extract key health markers, so that I don't have to manually review every report for abnormal values.
+**User Story:** As a primary care worker, I want the system to automatically parse uploaded lab reports and extract key health markers with validation, so that I don't have to manually review every report for abnormal values and can trust the extracted data accuracy.
 
 #### Acceptance Criteria
 
 1. WHEN a PDF lab report is uploaded THEN the system SHALL automatically extract text content from the PDF
-2. WHEN text is extracted THEN the system SHALL parse and identify available health markers from a predefined list (starting with glucose, cholesterol, triglycerides, and liver enzymes for MVP)
-3. WHEN health markers are identified THEN the system SHALL extract their numerical values and units
-4. WHEN the system is expanded THEN it SHALL support additional health markers based on healthcare provider requirements and standard medical references
-5. IF parsing fails or markers cannot be identified THEN the system SHALL flag the report for manual review
-6. WHEN parsing is complete THEN the system SHALL store the extracted data in the database with reference to the original PDF
+2. WHEN text is extracted THEN the system SHALL parse patient identification data only from the first page to avoid duplication
+3. WHEN text is extracted THEN the system SHALL parse and identify available health markers from a predefined list (starting with glucose, cholesterol, triglycerides, and liver enzymes for MVP)
+4. WHEN health markers are identified THEN the system SHALL extract their numerical values and units
+5. WHEN parsing is complete THEN the system SHALL validate the extraction using automated confidence scoring and healthcare logic validation
+6. WHEN validation confidence is high (85%+) THEN the system SHALL auto-approve the parsed data
+7. WHEN validation confidence is medium (70-84%) THEN the system SHALL flag for manual spot-check review
+8. WHEN validation confidence is low (<70%) THEN the system SHALL require manual review before approval
+9. WHEN critical values are detected (glucose >250, HbA1c >10) THEN the system SHALL always trigger additional validation regardless of confidence score
+10. WHEN the system is expanded THEN it SHALL support additional health markers based on healthcare provider requirements and standard medical references
+11. IF parsing fails or markers cannot be identified THEN the system SHALL flag the report for manual review
+12. WHEN parsing is complete THEN the system SHALL store the extracted data in the database with reference to the original PDF and validation results
 
 ### Requirement 4
 
@@ -170,6 +176,21 @@ The Lab Result Prioritization System is a web application designed for Chile's p
 6. IF a PDF cannot be displayed THEN the system SHALL show an appropriate error message and suggest contacting support
 
 ### Requirement 13
+
+**User Story:** As a primary care worker, I want to review and validate parsed lab data when needed, so that I can ensure accuracy before making medical decisions based on the extracted information.
+
+#### Acceptance Criteria
+
+1. WHEN parsed data has high confidence (85%+) THEN the system SHALL auto-approve and proceed without manual intervention
+2. WHEN parsed data has medium confidence (70-84%) THEN the system SHALL flag for optional spot-check review
+3. WHEN parsed data has low confidence (<70%) THEN the system SHALL require manual review before approval
+4. WHEN critical values are detected THEN the system SHALL always require additional validation regardless of confidence score
+5. WHEN manual review is required THEN the system SHALL display a side-by-side comparison of original PDF and extracted data
+6. WHEN reviewing extracted data THEN users SHALL be able to edit, approve, or reject the parsing results
+7. WHEN validation is complete THEN the system SHALL store the validation results and any manual corrections for system learning
+8. WHEN validation patterns improve THEN the system SHALL reduce the manual review rate over time
+
+### Requirement 14
 
 **User Story:** As a primary care worker, I want the system to handle errors gracefully and provide clear feedback, so that I can understand what went wrong and take appropriate action when issues occur.
 
