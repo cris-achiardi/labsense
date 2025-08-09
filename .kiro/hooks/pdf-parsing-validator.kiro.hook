@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "PDF Parsing Pattern Validator",
+  "description": "Validates PDF parsing function against test PDFs to ensure correct patient identification (RUT format), all 5 required columns (Examen, Resultado, Unidad, Valor de Referencia, Método), and abnormal markers [*] are properly extracted",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "tests/pdfs/**/*.pdf"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new PDF has been added to the tests/pdfs/ folder. Please run the PDF parsing function against this file and validate that the output includes: 1) Patient identification with correct RUT format, 2) All 5 columns (Examen, Resultado, Unidad, Valor de Referencia, Método), 3) Any abnormal markers [*] present in the original file. If any expected element is missing, produce a detailed error report with the filename and the missing patterns."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Security Pre-Commit Scanner",
+  "description": "Before committing, scan all staged files for any sensitive information such as API keys, passwords, RUT numbers, or patient-identifiable data. If any match is found, block the commit and display a warning listing the file name and suspected leak. Use common patterns for credentials and Chilean identification numbers.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Scan the following files for sensitive information including API keys, passwords, tokens, RUT numbers (Chilean identification), and patient-identifiable data. Look for patterns like: API keys (starting with 'sk-', 'pk-', 'Bearer', etc.), passwords in configuration files, Chilean RUT format (XX.XXX.XXX-X), email addresses in medical contexts, patient names or IDs, database connection strings, and other credentials. If any sensitive data is found, respond with \"SECURITY VIOLATION DETECTED\" followed by the file name and type of sensitive data found. If no sensitive data is detected, respond with \"SCAN COMPLETE - NO SENSITIVE DATA DETECTED\"."
+  }
+}

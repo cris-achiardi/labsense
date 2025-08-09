@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Changelog Generator",
+  "description": "On every commit, append a new line to the bottom of CHANGELOG.md in the format: YYYY-MM-DD – Commit message summary. If the commit modifies requirements or technical design files (requirements.md, design.md), note \"(Spec Update)\" at the end of the entry.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A commit has been made to the repository. Please update the CHANGELOG.md file by appending a new entry at the bottom in the format: YYYY-MM-DD – [commit message summary]. If the commit modified requirements.md or design.md files, add \"(Spec Update)\" at the end of the entry. Use today's date and extract the commit message from the git history."
+  }
+}

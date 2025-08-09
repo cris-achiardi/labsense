@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto-Update Project Status",
+  "description": "Automatically updates project-status.md file on every commit by adding a new entry at the top with current date, commit message, and summary of changes",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".git/logs/HEAD"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new commit has been made to the repository. Please open the project-status.md file and add a new entry at the top under a \"Recent Updates\" section. Include today's date, the latest commit message from git log, and create a short bullet-point summary of what changed based on the commit. Keep all older entries below the new one to maintain chronological order. If project-status.md doesn't exist, create it with the Recent Updates section."
+  }
+}

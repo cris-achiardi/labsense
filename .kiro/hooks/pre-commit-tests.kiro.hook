@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Pre-commit Test Runner",
+  "description": "Automatically runs the project's test suite before commits or pushes to prevent broken code from entering the main branch. If tests fail, the commit/push is blocked and error details are displayed.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".git/COMMIT_EDITMSG",
+      ".git/refs/heads/*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A commit or push operation is about to occur. Run the project's test suite using the appropriate test command (npm test, yarn test, or similar based on package.json). If any tests fail, prevent the commit/push operation and display the failed test names and specific error messages to help the developer fix the issues before proceeding."
+  }
+}
