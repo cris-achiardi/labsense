@@ -1,0 +1,42 @@
+{
+  "name": "labsense",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "description": "Intelligent lab result prioritization system for Chilean healthcare",
+  "keywords": [
+    "healthcare",
+    "chile",
+    "lab-results",
+    "radix-ui",
+    "nextjs"
+  ],
+  "repository": "https://github.com/cris-achiardi/labsense.git",
+  "author": "Cristian Morales <crmorales.achiardi@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@radix-ui/colors": "^3.0.0",
+    "@radix-ui/themes": "^3.2.1",
+    "@supabase/supabase-js": "^2.54.0",
+    "@types/node": "^24.2.1",
+    "@types/react": "^19.1.9",
+    "next": "^15.4.6",
+    "next-auth": "^4.24.11",
+    "next-intl": "^4.3.4",
+    "pdf-parse": "^1.1.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/pdf-parse": "^1.1.5",
+    "eslint": "^9.33.0",
+    "prettier": "^3.6.2"
+  }
+}

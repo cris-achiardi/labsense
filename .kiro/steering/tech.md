@@ -3,7 +3,8 @@
 ## Frontend Framework
 - **Next.js 14+** with App Router for modern React development
 - **TypeScript** for type safety and better developer experience
-- **Tailwind CSS** for consistent, utility-first styling
+- **Radix UI Themes** with mint accent color and full radius for complete design system
+- **Custom CSS** using Radix design tokens for healthcare-specific styling
 - **React Hook Form** for form handling and validation
 
 ## Authentication & Authorization

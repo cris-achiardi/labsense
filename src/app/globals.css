@@ -1,0 +1,61 @@
+/* Healthcare-specific custom styles for Radix UI Themes */
+
+/* Chilean RUT input styling */
+.rut-input {
+  font-family: var(--code-font-family);
+  letter-spacing: 0.05em;
+}
+
+/* Medical data table styling */
+.lab-results-table {
+  font-size: var(--font-size-2);
+}
+
+.lab-results-table th {
+  font-weight: var(--font-weight-medium);
+  color: var(--gray-11);
+  background-color: var(--gray-2);
+}
+
+.lab-results-table td {
+  border-top: 1px solid var(--gray-6);
+}
+
+/* Abnormal value highlighting */
+.abnormal-value {
+  font-weight: var(--font-weight-medium);
+  color: var(--red-11);
+  background-color: var(--red-2);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-1);
+}
+
+/* Spanish medical terminology */
+.medical-term {
+  font-weight: var(--font-weight-medium);
+}
+
+/* Custom healthcare priority colors using Radix tokens */
+.priority-high {
+  background-color: var(--red-2);
+  border-color: var(--red-6);
+  color: var(--red-11);
+}
+
+.priority-medium {
+  background-color: var(--orange-2);
+  border-color: var(--orange-6);
+  color: var(--orange-11);
+}
+
+.priority-low {
+  background-color: var(--yellow-2);
+  border-color: var(--yellow-6);
+  color: var(--yellow-11);
+}
+
+.priority-normal {
+  background-color: var(--green-2);
+  border-color: var(--green-6);
+  color: var(--green-11);
+}
