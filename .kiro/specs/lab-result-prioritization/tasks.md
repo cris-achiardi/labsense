@@ -20,7 +20,7 @@
 - [x] Remove Tailwind CSS (not needed with Radix UI Themes)
 - [x] Create TypeScript configuration with path aliases
 - [x] Setup project structure following healthcare conventions
-- [ ] Configure Supabase client and environment variables
+- [x] Configure Supabase client and environment variables
 - [ ] Add Spanish language configuration with next-intl
 
 ### Task 2: Authentication System (Requirement 1)
