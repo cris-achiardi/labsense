@@ -29,6 +29,7 @@ const authOptions: NextAuthOptions = {
           if (!existingUser) {
             // User not pre-approved - deny access
             console.log('Access denied for non-approved user:', user.email)
+            console.log('Available users in user_profiles:', await supabase.from('user_profiles').select('email'))
             return false
           }
 
