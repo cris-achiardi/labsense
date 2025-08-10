@@ -1,35 +1,6 @@
-'use client'
-
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import { Card, Heading, Text, Button, Badge, Flex, Box, Container } from '@radix-ui/themes'
 
-export default function HomePage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-  }, [status, router])
-
-  if (status === 'loading') {
-    return (
-      <Box p="6" style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
-        <Container size="1">
-          <Flex direction="column" align="center" justify="center" style={{ minHeight: '100vh' }}>
-            <Text>Cargando...</Text>
-          </Flex>
-        </Container>
-      </Box>
-    )
-  }
-
-  if (!session) {
-    return null
-  }
+export default function DemoPage() {
   return (
     <Box p="6" style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
       <Container size="4">
@@ -37,13 +8,13 @@ export default function HomePage() {
           {/* Header */}
           <Box style={{ textAlign: 'center' }}>
             <Heading size="8" style={{ color: 'var(--gray-12)', marginBottom: 'var(--space-2)' }}>
-              LabSense
+              LabSense - Demo
             </Heading>
             <Text size="4" style={{ color: 'var(--gray-11)' }}>
               Sistema Inteligente de Priorización de Resultados de Laboratorio
             </Text>
-            <Text size="3" style={{ color: 'var(--mint-11)', marginTop: 'var(--space-2)' }}>
-              Bienvenido, {session?.user?.name || 'Usuario'}
+            <Text size="3" style={{ color: 'var(--gray-10)', marginTop: 'var(--space-2)' }}>
+              Demostración con datos anonimizados
             </Text>
           </Box>
 
@@ -73,8 +44,8 @@ export default function HomePage() {
                     • TSH: 11.040 μUI/mL (normal: 0.55-4.78)
                   </Text>
                 </Box>
-                <Button color="mint" variant="solid">
-                  Ver Detalles
+                <Button color="mint" variant="solid" disabled>
+                  Ver Detalles (Demo)
                 </Button>
               </Flex>
             </Card>
@@ -100,8 +71,8 @@ export default function HomePage() {
                     • Triglicéridos: 180 mg/dL (normal: &lt;150)
                   </Text>
                 </Box>
-                <Button color="mint" variant="outline">
-                  Ver Detalles
+                <Button color="mint" variant="outline" disabled>
+                  Ver Detalles (Demo)
                 </Button>
               </Flex>
             </Card>
@@ -127,27 +98,44 @@ export default function HomePage() {
                     • Colesterol: 180 mg/dL ✓
                   </Text>
                 </Box>
-                <Button color="mint" variant="soft">
-                  Ver Detalles
+                <Button color="mint" variant="soft" disabled>
+                  Ver Detalles (Demo)
                 </Button>
               </Flex>
             </Card>
           </Flex>
 
+          {/* Demo Info */}
+          <Card style={{ maxWidth: '600px', textAlign: 'center' }}>
+            <Flex direction="column" gap="3">
+              <Heading size="5">Acerca de LabSense</Heading>
+              <Text size="3">
+                LabSense automatiza la revisión de resultados de laboratorio en centros de atención primaria de Chile, 
+                utilizando inteligencia artificial para identificar instantáneamente valores críticos y priorizar 
+                pacientes que necesitan atención médica inmediata.
+              </Text>
+              <Text size="2" style={{ color: 'var(--gray-10)' }}>
+                Los datos mostrados son ejemplos anonimizados para fines de demostración.
+              </Text>
+            </Flex>
+          </Card>
+
           {/* Action Buttons */}
           <Flex gap="3">
             <Button size="3" color="mint" variant="solid" asChild>
-              <a href="/dashboard">Ver Dashboard</a>
+              <a href="/auth/signin">Acceder al Sistema</a>
             </Button>
             <Button size="3" color="mint" variant="outline" asChild>
-              <a href="/demo">Ver Demo Público</a>
-            </Button>
-            <Button size="3" color="gray" variant="soft" onClick={() => {
-              import('next-auth/react').then(({ signOut }) => signOut())
-            }}>
-              Cerrar Sesión
+              <a href="/test-db">Probar Conexión BD</a>
             </Button>
           </Flex>
+
+          {/* Footer */}
+          <Text size="2" style={{ color: 'var(--gray-10)', textAlign: 'center' }}>
+            LabSense - Desarrollado para Centros de Atención Primaria de Chile
+            <br />
+            Transformando horas de revisión manual en minutos de atención enfocada
+          </Text>
         </Flex>
       </Container>
     </Box>

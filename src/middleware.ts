@@ -27,15 +27,16 @@ export default withAuth(
         const pathname = req.nextUrl.pathname
 
         // Allow access to public pages
-        if (pathname === '/' || 
-            pathname.startsWith('/auth') ||
+        if (pathname.startsWith('/auth') ||
+            pathname.startsWith('/demo') ||
             pathname.startsWith('/test-db') ||
             pathname.startsWith('/api/auth')) {
           return true
         }
         
-        // Require authentication for protected routes (dashboard, admin, etc.)
-        if (pathname.startsWith('/dashboard') || 
+        // Require authentication for protected routes (homepage, dashboard, admin, etc.)
+        if (pathname === '/' ||
+            pathname.startsWith('/dashboard') || 
             pathname.startsWith('/admin')) {
           return !!token
         }

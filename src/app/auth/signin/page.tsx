@@ -77,6 +77,10 @@ export default function SignIn() {
 
               <Text size="2" style={{ textAlign: 'center', color: 'var(--gray-10)', marginTop: 'var(--space-4)' }}>
                 Solo personal autorizado de centros de salud primaria puede acceder al sistema
+                <br />
+                <a href="/demo" style={{ color: 'var(--mint-11)', textDecoration: 'underline' }}>
+                  Ver demostración pública
+                </a>
               </Text>
             </Flex>
           </Card>
