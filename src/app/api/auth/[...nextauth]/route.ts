@@ -1,7 +1,19 @@
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import { supabase } from '@/lib/database/supabase'
-import type { NextAuthOptions } from 'next-auth'
+import { createClient } from '@supabase/supabase-js'
+import type { NextAuthOptions }
+
+// Create a service role client that bypasses RLS for auth operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+) from 'next-auth'
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -15,7 +27,7 @@ const authOptions: NextAuthOptions = {
       if (account?.provider === 'google') {
         try {
           // Check if user exists in our user_profiles table (pre-approved users only)
-          const { data: existingUser, error: fetchError } = await supabase
+          const { data: existingUser, error: fetchError } = await supabaseAdmin
             .from('user_profiles')
             .select('*')
             .eq('email', user.email)
@@ -29,12 +41,13 @@ const authOptions: NextAuthOptions = {
           if (!existingUser) {
             // User not pre-approved - deny access
             console.log('Access denied for non-approved user:', user.email)
-            console.log('Available users in user_profiles:', await supabase.from('user_profiles').select('email'))
+            const { data: allUsers } = await supabaseAdmin.from('user_profiles').select('email')
+            console.log('Available users in user_profiles:', allUsers)
             return false
           }
 
           // Update user profile with latest info from Google
-          await supabase
+          await supabaseAdmin
             .from('user_profiles')
             .update({ 
               name: user.name!,
@@ -54,7 +67,7 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (account && user) {
         // Fetch user data from our user_profiles table
-        const { data: dbUser } = await supabase
+        const { data: dbUser } = await supabaseAdmin
           .from('user_profiles')
           .select('*')
           .eq('email', user.email)

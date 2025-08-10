@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/database/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+// Create a service role client that bypasses RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 export async function GET(request: NextRequest) {
   try {
-    // Check user_profiles table
-    const { data: profiles, error: profilesError } = await supabase
+    // Check user_profiles table with admin client
+    const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
 
@@ -15,7 +27,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       user_profiles: profiles,
-      count: profiles?.length || 0
+      count: profiles?.length || 0,
+      message: 'Using service role key to bypass RLS'
     })
   } catch (error) {
     console.error('Debug API error:', error)
