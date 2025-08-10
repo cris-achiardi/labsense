@@ -3,7 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { supabase } from '@/lib/database/supabase'
 import type { NextAuthOptions } from 'next-auth'
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
