@@ -3,8 +3,9 @@
 import { useSearchParams } from 'next/navigation'
 import { Card, Heading, Text, Button, Flex, Box, Container } from '@radix-ui/themes'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default function AuthError() {
+function AuthErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
@@ -62,5 +63,21 @@ export default function AuthError() {
         </Flex>
       </Container>
     </Box>
+  )
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={
+      <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
+        <Container size="1">
+          <Flex direction="column" align="center" justify="center" style={{ minHeight: '100vh' }}>
+            <Text>Cargando...</Text>
+          </Flex>
+        </Container>
+      </Box>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }
