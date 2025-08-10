@@ -14,14 +14,9 @@ export default withAuth(
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
-    // Redirect unauthenticated users to sign in
-    if (isDashboard && !isAuth) {
-      return NextResponse.redirect(new URL('/auth/signin', req.url))
-    }
-
     // Check admin access
     if (isAdmin && (!isAuth || token?.role !== 'admin')) {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      return NextResponse.redirect(new URL('/auth/signin', req.url))
     }
 
     return NextResponse.next()
@@ -29,15 +24,24 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
+        const pathname = req.nextUrl.pathname
+
         // Allow access to public pages
-        if (req.nextUrl.pathname === '/' || 
-            req.nextUrl.pathname.startsWith('/auth') ||
-            req.nextUrl.pathname.startsWith('/test-db')) {
+        if (pathname === '/' || 
+            pathname.startsWith('/auth') ||
+            pathname.startsWith('/test-db') ||
+            pathname.startsWith('/api/auth')) {
           return true
         }
         
-        // Require authentication for protected routes
-        return !!token
+        // Require authentication for protected routes (dashboard, admin, etc.)
+        if (pathname.startsWith('/dashboard') || 
+            pathname.startsWith('/admin')) {
+          return !!token
+        }
+
+        // Default: allow access to other pages
+        return true
       },
     },
   }
