@@ -75,11 +75,23 @@ export default function SignIn() {
                 {loading ? 'Iniciando sesión...' : 'Continuar con Google'}
               </Button>
 
-              <Text size="2" style={{ textAlign: 'center', color: 'var(--gray-10)', marginTop: 'var(--space-4)' }}>
-                Solo personal autorizado de centros de salud primaria puede acceder al sistema
-                <br />
+              <Box style={{ 
+                backgroundColor: 'var(--amber-3)', 
+                border: '1px solid var(--amber-7)',
+                borderRadius: 'var(--radius-3)',
+                padding: 'var(--space-3)',
+                marginTop: 'var(--space-4)'
+              }}>
+                <Text size="2" style={{ textAlign: 'center', color: 'var(--amber-11)' }}>
+                  <strong>⚠️ Acceso Restringido</strong><br/>
+                  Solo usuarios pre-aprobados pueden acceder al sistema.
+                  Si no tienes acceso autorizado, serás redirigido.
+                </Text>
+              </Box>
+
+              <Text size="2" style={{ textAlign: 'center', color: 'var(--gray-10)' }}>
                 <a href="/demo" style={{ color: 'var(--mint-11)', textDecoration: 'underline' }}>
-                  Ver demostración pública
+                  Ver demostración pública sin registro
                 </a>
               </Text>
             </Flex>

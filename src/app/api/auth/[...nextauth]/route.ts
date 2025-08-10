@@ -14,7 +14,7 @@ const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
         try {
-          // Check if user exists in our user_profiles table
+          // Check if user exists in our user_profiles table (pre-approved users only)
           const { data: existingUser, error: fetchError } = await supabase
             .from('user_profiles')
             .select('*')
@@ -27,33 +27,20 @@ const authOptions: NextAuthOptions = {
           }
 
           if (!existingUser) {
-            // Create new user profile - admin status determined by email
-            const isAdmin = ['crmorales.achiardi@gmail.com', 'js.rodriguez.parco@gmail.com'].includes(user.email!)
-            
-            const { error: insertError } = await supabase
-              .from('user_profiles')
-              .insert({
-                email: user.email!,
-                name: user.name!,
-                image: user.image,
-                role: isAdmin ? 'admin' : 'healthcare_worker',
-              })
-
-            if (insertError) {
-              console.error('Error creating user profile:', insertError)
-              return false
-            }
-          } else {
-            // Update user profile with latest info from Google
-            await supabase
-              .from('user_profiles')
-              .update({ 
-                name: user.name!,
-                image: user.image,
-                updated_at: new Date().toISOString()
-              })
-              .eq('email', user.email)
+            // User not pre-approved - deny access
+            console.log('Access denied for non-approved user:', user.email)
+            return false
           }
+
+          // Update user profile with latest info from Google
+          await supabase
+            .from('user_profiles')
+            .update({ 
+              name: user.name!,
+              image: user.image,
+              updated_at: new Date().toISOString()
+            })
+            .eq('email', user.email)
 
           return true
         } catch (error) {
@@ -91,6 +78,12 @@ const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
+  },
+  events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      // Log successful sign-ins for approved users
+      console.log('Successful sign-in for approved user:', user.email)
+    },
   },
   session: {
     strategy: 'jwt',

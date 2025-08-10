@@ -24,8 +24,8 @@
 - [x] Add Spanish language configuration with next-intl
 
 ### Task 2: Authentication System (Requirement 1)
-- [ ] Install and configure NextAuth with Google OAuth provider
-- [ ] Create user profile table with healthcare_worker/admin roles
+- [x] Install and configure NextAuth with Google OAuth provider
+- [x] Create user profile table with healthcare_worker/admin roles
 - [ ] Implement session management with 30-minute timeout
 - [ ] Add secure logout functionality with session cleanup
 - [ ] Create audit logging for login/logout events
