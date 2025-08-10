@@ -1,19 +1,7 @@
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import { createClient } from '@supabase/supabase-js'
-import type { NextAuthOptions }
-
-// Create a service role client that bypasses RLS for auth operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-) from 'next-auth'
+import { supabaseAdmin } from '@/lib/database/supabase-admin'
+import type { NextAuthOptions } from 'next-auth'
 
 const authOptions: NextAuthOptions = {
   providers: [

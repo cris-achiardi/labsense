@@ -32,53 +32,57 @@ export default function AdminUsersPage() {
         }
     }, [status, session, router])
 
-    // Mock data for now - in real implementation, fetch from Supabase
+    // Fetch users from API
     useEffect(() => {
         if (session?.user?.role === 'admin') {
-            // Simulate loading users
-            setTimeout(() => {
-                setUsers([
-                    {
-                        id: '1',
-                        email: 'crmorales.achiardi@gmail.com',
-                        name: 'Cristian Morales Achiardi',
-                        role: 'admin',
-                        created_at: '2024-01-15T10:00:00Z'
-                    },
-                    {
-                        id: '2',
-                        email: 'js.rodriguez.parco@gmail.com',
-                        name: 'Julissa Rodriguez Parco',
-                        role: 'admin',
-                        created_at: '2024-01-15T10:00:00Z'
-                    }
-                ])
-                setLoading(false)
-            }, 1000)
+            fetchUsers()
         }
     }, [session])
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch('/api/admin/users')
+            if (response.ok) {
+                const data = await response.json()
+                setUsers(data.users || [])
+            } else {
+                console.error('Failed to fetch users')
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const handleAddUser = async () => {
         if (!newUserEmail || !newUserName) return
 
         setAdding(true)
         try {
-            // In real implementation, call Supabase API
-            const newUser: UserProfile = {
-                id: Date.now().toString(),
-                email: newUserEmail,
-                name: newUserName,
-                role: newUserRole,
-                created_at: new Date().toISOString()
+            const response = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: newUserEmail,
+                    name: newUserName,
+                    role: newUserRole
+                })
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setUsers([...users, data.user])
+                setNewUserEmail('')
+                setNewUserName('')
+                setNewUserRole('healthcare_worker')
+                alert('Usuario agregado exitosamente')
+            } else {
+                const error = await response.json()
+                alert(`Error: ${error.error}`)
             }
-
-            setUsers([...users, newUser])
-            setNewUserEmail('')
-            setNewUserName('')
-            setNewUserRole('healthcare_worker')
-
-            // Show success message
-            alert('Usuario agregado exitosamente')
         } catch (error) {
             console.error('Error adding user:', error)
             alert('Error al agregar usuario')
