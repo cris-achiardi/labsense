@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Theme } from '@radix-ui/themes'
+import AuthSessionProvider from '@/components/providers/session-provider'
 import '@radix-ui/themes/styles.css'
 import './globals.css'
 
@@ -19,9 +20,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <Theme accentColor="mint" radius="full">
-          {children}
-        </Theme>
+        <AuthSessionProvider>
+          <Theme accentColor="mint" radius="full">
+            {children}
+          </Theme>
+        </AuthSessionProvider>
       </body>
     </html>
   )

@@ -104,11 +104,11 @@ export default function HomePage() {
 
           {/* Action Buttons */}
           <Flex gap="3">
-            <Button size="3" color="mint" variant="solid">
-              Cargar Nuevo PDF
+            <Button size="3" color="mint" variant="solid" asChild>
+              <a href="/auth/signin">Iniciar Sesión</a>
             </Button>
-            <Button size="3" color="mint" variant="outline">
-              Ver Dashboard
+            <Button size="3" color="mint" variant="outline" asChild>
+              <a href="/dashboard">Ver Dashboard</a>
             </Button>
           </Flex>
         </Flex>
