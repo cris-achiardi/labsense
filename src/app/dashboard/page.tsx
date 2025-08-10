@@ -42,7 +42,7 @@ export default function Dashboard() {
     return role === 'admin' ? 'Administrador' : 'Trabajador de Salud'
   }
 
-  const getHealthcareRoleDisplayName = (healthcareRole: string | null) => {
+  const getHealthcareRoleDisplayName = (healthcareRole: string | null | undefined) => {
     const roles: { [key: string]: string } = {
       nurse: 'Enfermero/a',
       medic: 'Médico/a',
