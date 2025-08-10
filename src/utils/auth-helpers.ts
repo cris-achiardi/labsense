@@ -37,7 +37,7 @@ export function getRoleDisplayName(role: string): string {
   return roleNames[role] || role
 }
 
-export function getHealthcareRoleDisplayName(healthcareRole: string | null): string {
+export function getHealthcareRoleDisplayName(healthcareRole: string | null | undefined): string {
   if (!healthcareRole) return 'No especificado'
   
   const roles: { [key: string]: string } = {
