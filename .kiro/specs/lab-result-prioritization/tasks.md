@@ -26,7 +26,7 @@
 ### Task 2: Authentication System (Requirement 1)
 - [x] Install and configure NextAuth with Google OAuth provider
 - [x] Create user profile table with healthcare_worker/admin roles
-- [ ] Implement session management with 30-minute timeout
+- [x] Implement session management with 30-minute timeout
 - [ ] Add secure logout functionality with session cleanup
 - [ ] Create audit logging for login/logout events
 
