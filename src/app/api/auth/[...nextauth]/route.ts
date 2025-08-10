@@ -14,64 +14,45 @@ const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google') {
         try {
-          // Check if user exists in our database
+          // Check if user exists in our user_profiles table
           const { data: existingUser, error: fetchError } = await supabase
-            .from('users')
+            .from('user_profiles')
             .select('*')
             .eq('email', user.email)
             .single()
 
           if (fetchError && fetchError.code !== 'PGRST116') {
-            console.error('Error fetching user:', fetchError)
+            console.error('Error fetching user profile:', fetchError)
             return false
           }
 
           if (!existingUser) {
-            // Create new user with default healthcare_worker role
+            // Create new user profile - admin status determined by email
+            const isAdmin = ['crmorales.achiardi@gmail.com', 'js.rodriguez.parco@gmail.com'].includes(user.email!)
+            
             const { error: insertError } = await supabase
-              .from('users')
+              .from('user_profiles')
               .insert({
                 email: user.email!,
                 name: user.name!,
-                role: 'healthcare_worker',
-                healthcare_role: null,
-                last_login: new Date().toISOString(),
+                image: user.image,
+                role: isAdmin ? 'admin' : 'healthcare_worker',
               })
 
             if (insertError) {
-              console.error('Error creating user:', insertError)
+              console.error('Error creating user profile:', insertError)
               return false
             }
-
-            // Log the signup event
-            await supabase
-              .from('audit_logs')
-              .insert({
-                user_id: null, // Will be updated after user creation
-                action: 'user_signup',
-                resource_type: 'user',
-                resource_id: null,
-                ip_address: null,
-                user_agent: null,
-              })
           } else {
-            // Update last login
+            // Update user profile with latest info from Google
             await supabase
-              .from('users')
-              .update({ last_login: new Date().toISOString() })
-              .eq('email', user.email)
-
-            // Log the login event
-            await supabase
-              .from('audit_logs')
-              .insert({
-                user_id: existingUser.id,
-                action: 'user_login',
-                resource_type: 'user',
-                resource_id: existingUser.id,
-                ip_address: null,
-                user_agent: null,
+              .from('user_profiles')
+              .update({ 
+                name: user.name!,
+                image: user.image,
+                updated_at: new Date().toISOString()
               })
+              .eq('email', user.email)
           }
 
           return true
@@ -84,16 +65,15 @@ const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account }) {
       if (account && user) {
-        // Fetch user data from our database
+        // Fetch user data from our user_profiles table
         const { data: dbUser } = await supabase
-          .from('users')
+          .from('user_profiles')
           .select('*')
           .eq('email', user.email)
           .single()
 
         if (dbUser) {
           token.role = dbUser.role
-          token.healthcareRole = dbUser.healthcare_role
           token.userId = dbUser.id
         }
       }
@@ -103,7 +83,6 @@ const authOptions: NextAuthOptions = {
       // Add custom fields to session
       if (token) {
         session.user.role = token.role as string
-        session.user.healthcareRole = token.healthcareRole as string
         session.user.userId = token.userId as string
       }
       return session

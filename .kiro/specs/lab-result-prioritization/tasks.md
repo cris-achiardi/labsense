@@ -21,7 +21,7 @@
 - [x] Create TypeScript configuration with path aliases
 - [x] Setup project structure following healthcare conventions
 - [x] Configure Supabase client and environment variables
-- [ ] Add Spanish language configuration with next-intl
+- [x] Add Spanish language configuration with next-intl
 
 ### Task 2: Authentication System (Requirement 1)
 - [ ] Install and configure NextAuth with Google OAuth provider

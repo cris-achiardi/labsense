@@ -8,21 +8,19 @@ declare module 'next-auth' {
       email?: string | null
       image?: string | null
       role: string
-      healthcareRole?: string | null
       userId: string
     }
   }
 
   interface User {
-    role?: string
-    healthcareRole?: string | null
+    role: string
+    userId: string
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    role?: string
-    healthcareRole?: string | null
-    userId?: string
+    role: string
+    userId: string
   }
 }

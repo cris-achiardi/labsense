@@ -1,11 +1,12 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { Card, Heading, Text, Button, Flex, Box, Container, Badge } from '@radix-ui/themes'
+import { DashboardLayout } from '@/components/ui/dashboard-layout'
+import { Card, Heading, Text, Button, Badge, Flex, Box, Container } from '@radix-ui/themes'
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
@@ -17,9 +18,13 @@ export default function Dashboard() {
 
   if (status === 'loading') {
     return (
-      <Box p="6">
-        <Text>Cargando...</Text>
-      </Box>
+      <DashboardLayout>
+        <Container size="1">
+          <Flex direction="column" align="center" justify="center" style={{ minHeight: '50vh' }}>
+            <Text>Cargando dashboard...</Text>
+          </Flex>
+        </Container>
+      </DashboardLayout>
     )
   }
 
@@ -27,120 +32,128 @@ export default function Dashboard() {
     return null
   }
 
-  const handleSignOut = async () => {
-    await signOut({
-      callbackUrl: '/',
-      redirect: true,
-    })
-  }
-
-  const getRoleBadgeColor = (role: string) => {
-    return role === 'admin' ? 'red' : 'mint'
-  }
-
-  const getRoleDisplayName = (role: string) => {
-    return role === 'admin' ? 'Administrador' : 'Trabajador de Salud'
-  }
-
-  const getHealthcareRoleDisplayName = (healthcareRole: string | null | undefined) => {
-    const roles: { [key: string]: string } = {
-      nurse: 'Enfermero/a',
-      medic: 'Médico/a',
-      nutritionist: 'Nutricionista',
-      psychologist: 'Psicólogo/a',
-      social_worker: 'Trabajador/a Social',
-      administrative: 'Administrativo/a',
-    }
-    return healthcareRole ? roles[healthcareRole] || healthcareRole : 'No especificado'
-  }
-
   return (
-    <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
+    <DashboardLayout>
       <Container size="4">
-        <Box p="6">
-          {/* Header */}
-          <Flex justify="between" align="center" mb="6">
-            <Heading size="7">Dashboard - LabSense</Heading>
-            <Button color="gray" variant="outline" onClick={handleSignOut}>
-              Cerrar Sesión
-            </Button>
-          </Flex>
+        <Flex direction="column" gap="6">
+          {/* Welcome Header */}
+          <Box>
+            <Heading size="7" style={{ color: 'var(--gray-12)', marginBottom: 'var(--space-2)' }}>
+              Dashboard de Pacientes
+            </Heading>
+            <Text size="4" style={{ color: 'var(--gray-11)' }}>
+              Resultados de laboratorio priorizados por urgencia médica
+            </Text>
+          </Box>
 
-          {/* User Info Card */}
-          <Card mb="6">
-            <Flex direction="column" gap="3">
-              <Heading size="5">Información del Usuario</Heading>
-              
-              <Flex align="center" gap="3">
-                <Text weight="medium">Nombre:</Text>
-                <Text>{session.user.name}</Text>
-              </Flex>
-              
-              <Flex align="center" gap="3">
-                <Text weight="medium">Email:</Text>
-                <Text>{session.user.email}</Text>
-              </Flex>
-              
-              <Flex align="center" gap="3">
-                <Text weight="medium">Rol del Sistema:</Text>
-                <Badge color={getRoleBadgeColor(session.user.role)} variant="solid">
-                  {getRoleDisplayName(session.user.role)}
-                </Badge>
-              </Flex>
-              
-              <Flex align="center" gap="3">
-                <Text weight="medium">Rol de Salud:</Text>
-                <Text>{getHealthcareRoleDisplayName(session.user.healthcareRole)}</Text>
-              </Flex>
-            </Flex>
-          </Card>
-
-          {/* Admin Panel */}
-          {session.user.role === 'admin' && (
-            <Card mb="6" style={{ borderColor: 'var(--red-6)' }}>
+          {/* Patient Cards */}
+          <Flex gap="4" wrap="wrap">
+            {/* High Priority Patient */}
+            <Card style={{ width: '320px' }}>
               <Flex direction="column" gap="3">
-                <Heading size="5" style={{ color: 'var(--red-11)' }}>
-                  Panel de Administrador
-                </Heading>
-                <Text>Como administrador, tienes acceso a:</Text>
-                <Box ml="4">
-                  <Text as="div">• Gestión de usuarios y roles</Text>
-                  <Text as="div">• Configuración de rangos normales</Text>
-                  <Text as="div">• Logs de auditoría del sistema</Text>
-                  <Text as="div">• Configuración del sistema</Text>
+                <Flex justify="between" align="center">
+                  <Text weight="bold">****** ******* ****</Text>
+                  <Badge color="red" variant="solid">ALTA PRIORIDAD</Badge>
+                </Flex>
+                <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                  RUT: **.***.**-* • Edad: 73a 3m 17d
+                </Text>
+                <Box>
+                  <Text size="2" weight="medium" style={{ color: 'var(--red-11)' }}>
+                    Valores Anormales:
+                  </Text>
+                  <Text size="2" as="div">
+                    • Glucosa: 269 mg/dL (normal: 74-106)
+                  </Text>
+                  <Text size="2" as="div">
+                    • HbA1c: 11.8% (normal: 4-6)
+                  </Text>
+                  <Text size="2" as="div">
+                    • TSH: 11.040 μUI/mL (normal: 0.55-4.78)
+                  </Text>
                 </Box>
-                <Button color="red" variant="outline" style={{ width: 'fit-content' }}>
-                  Acceder a Panel de Admin
+                <Button color="mint" variant="solid">
+                  Ver Detalles
                 </Button>
               </Flex>
             </Card>
-          )}
 
-          {/* Healthcare Worker Panel */}
-          <Card>
-            <Flex direction="column" gap="3">
-              <Heading size="5">Panel de Trabajo</Heading>
-              <Text>Funciones disponibles:</Text>
-              <Box ml="4">
-                <Text as="div">• Ver pacientes priorizados</Text>
-                <Text as="div">• Cargar resultados de laboratorio (PDF)</Text>
-                <Text as="div">• Buscar y filtrar pacientes</Text>
-                <Text as="div">• Marcar pacientes como contactados</Text>
-                <Text as="div">• Ver historial de resultados por paciente</Text>
-              </Box>
-              
-              <Flex gap="3" mt="4">
-                <Button color="mint" variant="solid">
-                  Ver Pacientes Priorizados
-                </Button>
+            {/* Medium Priority Patient */}
+            <Card style={{ width: '320px' }}>
+              <Flex direction="column" gap="3">
+                <Flex justify="between" align="center">
+                  <Text weight="bold">****** *******</Text>
+                  <Badge color="orange" variant="solid">PRIORIDAD MEDIA</Badge>
+                </Flex>
+                <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                  RUT: **.***.**-* • Edad: 45a 2m 10d
+                </Text>
+                <Box>
+                  <Text size="2" weight="medium" style={{ color: 'var(--orange-11)' }}>
+                    Valores Anormales:
+                  </Text>
+                  <Text size="2" as="div">
+                    • Colesterol: 220 mg/dL (normal: &lt;200)
+                  </Text>
+                  <Text size="2" as="div">
+                    • Triglicéridos: 180 mg/dL (normal: &lt;150)
+                  </Text>
+                </Box>
                 <Button color="mint" variant="outline">
-                  Cargar Nuevo PDF
+                  Ver Detalles
                 </Button>
               </Flex>
-            </Flex>
-          </Card>
-        </Box>
+            </Card>
+
+            {/* Normal Patient */}
+            <Card style={{ width: '320px' }}>
+              <Flex direction="column" gap="3">
+                <Flex justify="between" align="center">
+                  <Text weight="bold">****** ******</Text>
+                  <Badge color="green" variant="solid">NORMAL</Badge>
+                </Flex>
+                <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                  RUT: **.***.**-* • Edad: 32a 8m 5d
+                </Text>
+                <Box>
+                  <Text size="2" weight="medium" style={{ color: 'var(--green-11)' }}>
+                    Todos los valores normales
+                  </Text>
+                  <Text size="2" as="div">
+                    • Glucosa: 95 mg/dL ✓
+                  </Text>
+                  <Text size="2" as="div">
+                    • Colesterol: 180 mg/dL ✓
+                  </Text>
+                </Box>
+                <Button color="mint" variant="soft">
+                  Ver Detalles
+                </Button>
+              </Flex>
+            </Card>
+          </Flex>
+
+          {/* Admin Panel Access */}
+          {session.user.role === 'admin' && (
+            <Card style={{ maxWidth: '600px' }}>
+              <Flex direction="column" gap="3">
+                <Heading size="5">Panel de Administración</Heading>
+                <Text size="3">
+                  Como administrador, tienes acceso a funciones adicionales del sistema.
+                </Text>
+                <Flex gap="3">
+                  <Button color="mint" variant="solid" asChild>
+                    <a href="/admin">Acceder al Panel Admin</a>
+                  </Button>
+                  <Button color="mint" variant="outline" asChild>
+                    <a href="/admin/users">Gestionar Usuarios</a>
+                  </Button>
+                </Flex>
+              </Flex>
+            </Card>
+          )}
+        </Flex>
       </Container>
-    </Box>
+    </DashboardLayout>
   )
 }
