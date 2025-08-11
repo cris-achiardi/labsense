@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Card, Heading, Text, Button, Flex, Box, Badge } from '@radix-ui/themes'
-import { validateChileanRUT, formatChileanRUT } from '@/lib/pdf-parsing/patient-extraction'
+import { validateChileanRUT, formatChileanRUT } from '@/lib/utils/chilean-rut'
 
 interface PatientInfo {
   rut: string | null
