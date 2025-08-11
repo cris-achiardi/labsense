@@ -3,15 +3,26 @@
 import { useState, useRef } from 'react'
 import { Card, Heading, Text, Button, Flex, Box, Badge } from '@radix-ui/themes'
 
+interface PatientInfo {
+  rut: string | null
+  name: string | null
+  age: string | null
+  gender: string | null
+  confidence: number
+}
+
 interface PDFUploadProps {
   onFileSelect: (file: File) => void
   onError: (error: string) => void
+  onPatientExtracted?: (patient: PatientInfo) => void
 }
 
-export function PDFUpload({ onFileSelect, onError }: PDFUploadProps) {
+export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [extractedPatient, setExtractedPatient] = useState<PatientInfo | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 10MB size limit
@@ -71,6 +82,40 @@ export function PDFUpload({ onFileSelect, onError }: PDFUploadProps) {
 
   const handleBrowseClick = () => {
     fileInputRef.current?.click()
+  }
+
+  const extractPatientInfo = async (file: File) => {
+    setIsProcessing(true)
+    setExtractedPatient(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('pdf', file)
+
+      const response = await fetch('/api/pdf/extract-patient', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        onError(data.error || 'Error al procesar el PDF')
+        return
+      }
+
+      if (data.success && data.patient) {
+        setExtractedPatient(data.patient)
+        onPatientExtracted?.(data.patient)
+      } else {
+        onError('No se pudo extraer información del paciente del PDF')
+      }
+    } catch (error) {
+      console.error('Error extracting patient info:', error)
+      onError('Error de conexión al procesar el PDF')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -184,8 +229,109 @@ export function PDFUpload({ onFileSelect, onError }: PDFUploadProps) {
           </Card>
         )}
 
-        {/* Upload button */}
-        {selectedFile && (
+        {/* Extract Patient Info button */}
+        {selectedFile && !extractedPatient && (
+          <Button
+            size="3"
+            color="mint"
+            variant="solid"
+            disabled={isProcessing}
+            style={{ width: '100%' }}
+            onClick={() => extractPatientInfo(selectedFile)}
+          >
+            {isProcessing ? (
+              <Flex align="center" gap="2">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  hourglass_empty
+                </span>
+                Extrayendo información del paciente...
+              </Flex>
+            ) : (
+              <Flex align="center" gap="2">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  person_search
+                </span>
+                Extraer Información del Paciente
+              </Flex>
+            )}
+          </Button>
+        )}
+
+        {/* Patient Information Display */}
+        {extractedPatient && (
+          <Card style={{ backgroundColor: 'var(--blue-2)', border: '1px solid var(--blue-6)' }}>
+            <Flex direction="column" gap="3">
+              <Flex justify="between" align="center">
+                <Text size="4" weight="bold" style={{ color: 'var(--blue-12)' }}>
+                  Información del Paciente Extraída
+                </Text>
+                <Badge 
+                  color={extractedPatient.confidence >= 85 ? 'green' : extractedPatient.confidence >= 70 ? 'orange' : 'red'}
+                  variant="solid"
+                >
+                  Confianza: {extractedPatient.confidence}%
+                </Badge>
+              </Flex>
+
+              <Flex direction="column" gap="2">
+                {extractedPatient.rut && (
+                  <Flex align="center" gap="2">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--blue-9)' }}>
+                      badge
+                    </span>
+                    <Text size="3">
+                      <strong>RUT:</strong> {extractedPatient.rut}
+                    </Text>
+                  </Flex>
+                )}
+
+                {extractedPatient.name && (
+                  <Flex align="center" gap="2">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--blue-9)' }}>
+                      person
+                    </span>
+                    <Text size="3">
+                      <strong>Nombre:</strong> {extractedPatient.name}
+                    </Text>
+                  </Flex>
+                )}
+
+                {extractedPatient.age && (
+                  <Flex align="center" gap="2">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--blue-9)' }}>
+                      calendar_today
+                    </span>
+                    <Text size="3">
+                      <strong>Edad:</strong> {extractedPatient.age}
+                    </Text>
+                  </Flex>
+                )}
+
+                {extractedPatient.gender && (
+                  <Flex align="center" gap="2">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--blue-9)' }}>
+                      wc
+                    </span>
+                    <Text size="3">
+                      <strong>Género:</strong> {extractedPatient.gender}
+                    </Text>
+                  </Flex>
+                )}
+              </Flex>
+
+              {extractedPatient.confidence < 70 && (
+                <Box style={{ backgroundColor: 'var(--orange-2)', padding: 'var(--space-2)', borderRadius: 'var(--radius-2)' }}>
+                  <Text size="2" style={{ color: 'var(--orange-11)' }}>
+                    <strong>⚠️ Confianza baja:</strong> Revisa la información extraída y corrige si es necesario.
+                  </Text>
+                </Box>
+              )}
+            </Flex>
+          </Card>
+        )}
+
+        {/* Process Lab Results button */}
+        {extractedPatient && (
           <Button
             size="3"
             color="mint"
@@ -198,14 +344,14 @@ export function PDFUpload({ onFileSelect, onError }: PDFUploadProps) {
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                   hourglass_empty
                 </span>
-                Procesando archivo...
+                Procesando resultados de laboratorio...
               </Flex>
             ) : (
               <Flex align="center" gap="2">
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                  cloud_upload
+                  science
                 </span>
-                Procesar Resultado de Laboratorio
+                Procesar Resultados de Laboratorio
               </Flex>
             )}
           </Button>

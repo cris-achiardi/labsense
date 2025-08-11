@@ -50,8 +50,8 @@
 
 ### Task 3: PDF Upload System (Requirement 2)
 - [x] Create PDF upload component with 10MB size validation
-- [ ] Implement file type validation (PDF only)
-- [ ] Add patient identification extraction from first page
+- [x] Implement file type validation (PDF only)
+- [x] Add patient identification extraction from first page
 - [ ] Build manual RUT/name entry fallback form
 - [ ] Store PDFs securely in Supabase Storage
 

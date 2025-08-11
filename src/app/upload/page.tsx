@@ -8,11 +8,20 @@ import { DashboardLayout } from '@/components/ui/dashboard-layout'
 import { PDFUpload } from '@/components/healthcare/pdf-upload'
 import { Container, Flex, Box, Text, Card } from '@radix-ui/themes'
 
+interface PatientInfo {
+  rut: string | null
+  name: string | null
+  age: string | null
+  gender: string | null
+  confidence: number
+}
+
 export default function UploadPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [extractedPatient, setExtractedPatient] = useState<PatientInfo | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -39,13 +48,19 @@ export default function UploadPage() {
   const handleFileSelect = (file: File) => {
     setError(null)
     setSuccess(`Archivo seleccionado: ${file.name} (${Math.round(file.size / 1024)}KB)`)
+    setExtractedPatient(null)
     console.log('File selected:', file)
-    // TODO: Implement actual file processing
   }
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage)
     setSuccess(null)
+  }
+
+  const handlePatientExtracted = (patient: PatientInfo) => {
+    setExtractedPatient(patient)
+    setError(null)
+    setSuccess(`Información del paciente extraída con ${patient.confidence}% de confianza`)
   }
 
   return (
@@ -104,6 +119,7 @@ export default function UploadPage() {
           <PDFUpload 
             onFileSelect={handleFileSelect}
             onError={handleError}
+            onPatientExtracted={handlePatientExtracted}
           />
 
           {/* Navigation */}
