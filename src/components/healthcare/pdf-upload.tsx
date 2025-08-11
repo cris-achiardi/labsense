@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Card, Heading, Text, Button, Flex, Box, Badge } from '@radix-ui/themes'
+import { ManualPatientEntry } from './manual-patient-entry'
 
 interface PatientInfo {
   rut: string | null
@@ -23,6 +24,8 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
   const [isUploading, setIsUploading] = useState(false)
   const [extractedPatient, setExtractedPatient] = useState<PatientInfo | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [confirmedPatient, setConfirmedPatient] = useState<PatientInfo | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 10MB size limit
@@ -216,6 +219,9 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
                 variant="soft"
                 onClick={() => {
                   setSelectedFile(null)
+                  setExtractedPatient(null)
+                  setConfirmedPatient(null)
+                  setShowManualEntry(false)
                   if (fileInputRef.current) {
                     fileInputRef.current.value = ''
                   }
@@ -321,17 +327,77 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
 
               {extractedPatient.confidence < 70 && (
                 <Box style={{ backgroundColor: 'var(--orange-2)', padding: 'var(--space-2)', borderRadius: 'var(--radius-2)' }}>
-                  <Text size="2" style={{ color: 'var(--orange-11)' }}>
-                    <strong>⚠️ Confianza baja:</strong> Revisa la información extraída y corrige si es necesario.
-                  </Text>
+                  <Flex justify="between" align="center">
+                    <Text size="2" style={{ color: 'var(--orange-11)' }}>
+                      <strong>⚠️ Confianza baja:</strong> Se recomienda revisar la información.
+                    </Text>
+                    <Button
+                      size="1"
+                      color="orange"
+                      variant="solid"
+                      onClick={() => setShowManualEntry(true)}
+                    >
+                      Corregir
+                    </Button>
+                  </Flex>
                 </Box>
+              )}
+
+              {/* Manual Entry Button for Good Confidence */}
+              {extractedPatient.confidence >= 70 && (
+                <Flex justify="end">
+                  <Button
+                    size="2"
+                    color="gray"
+                    variant="outline"
+                    onClick={() => setShowManualEntry(true)}
+                  >
+                    <Flex align="center" gap="1">
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+                        edit
+                      </span>
+                      Editar información
+                    </Flex>
+                  </Button>
+                </Flex>
               )}
             </Flex>
           </Card>
         )}
 
+        {/* Manual Entry Form */}
+        {showManualEntry && (
+          <ManualPatientEntry
+            initialData={extractedPatient}
+            onPatientConfirmed={(patient) => {
+              setConfirmedPatient(patient)
+              setShowManualEntry(false)
+              onPatientExtracted?.(patient)
+            }}
+            onCancel={() => setShowManualEntry(false)}
+          />
+        )}
+
+        {/* Manual Entry Button (when no extraction) */}
+        {selectedFile && !extractedPatient && !isProcessing && !showManualEntry && (
+          <Button
+            size="3"
+            color="gray"
+            variant="outline"
+            style={{ width: '100%' }}
+            onClick={() => setShowManualEntry(true)}
+          >
+            <Flex align="center" gap="2">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                edit_note
+              </span>
+              Ingresar Información Manualmente
+            </Flex>
+          </Button>
+        )}
+
         {/* Process Lab Results button */}
-        {extractedPatient && (
+        {(extractedPatient || confirmedPatient) && !showManualEntry && (
           <Button
             size="3"
             color="mint"
@@ -358,13 +424,15 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
         )}
 
         {/* Help text */}
-        <Box style={{ backgroundColor: 'var(--blue-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-2)' }}>
-          <Text size="2" style={{ color: 'var(--blue-11)' }}>
-            <strong>Información:</strong> El sistema extraerá automáticamente la información del paciente 
-            y los resultados de laboratorio del PDF. Asegúrate de que el archivo contenga los datos 
-            completos del paciente incluyendo RUT, nombre y resultados.
-          </Text>
-        </Box>
+        {!showManualEntry && (
+          <Box style={{ backgroundColor: 'var(--blue-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-2)' }}>
+            <Text size="2" style={{ color: 'var(--blue-11)' }}>
+              <strong>Información:</strong> El sistema extraerá automáticamente la información del paciente 
+              del PDF. Si la extracción automática falla o tiene baja confianza, puedes ingresar o corregir 
+              la información manualmente. Asegúrate de que el archivo contenga los datos completos del paciente.
+            </Text>
+          </Box>
+        )}
       </Flex>
     </Card>
   )

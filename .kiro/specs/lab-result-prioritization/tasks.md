@@ -52,7 +52,7 @@
 - [x] Create PDF upload component with 10MB size validation
 - [x] Implement file type validation (PDF only)
 - [x] Add patient identification extraction from first page
-- [ ] Build manual RUT/name entry fallback form
+- [x] Build manual RUT/name entry fallback form
 - [ ] Store PDFs securely in Supabase Storage
 
 ### Task 4: Chilean PDF Parsing (Requirement 3)
