@@ -1,5 +1,6 @@
 import { validateChileanRUT, formatChileanRUT } from '@/lib/utils/chilean-rut'
 import { extractTextFromPDF } from './pdf-text-extractor'
+import { parseChileanRUTsFromText, extractBestChileanRUT } from './chilean-rut-parser'
 
 export interface PatientInfo {
   rut: string | null
@@ -24,39 +25,8 @@ export interface ExtractionResult {
  * Extracts Chilean RUT patterns from text
  */
 function extractRUT(text: string): string | null {
-  // Chilean RUT patterns based on official format: XX.XXX.XXX-X
-  const rutPatterns = [
-    // Standard format with dots: 12.345.678-9
-    /\b(\d{1,2}\.\d{3}\.\d{3}-[0-9K])\b/gi,
-    // Format without dots: 12345678-9
-    /\b(\d{7,8}-[0-9K])\b/gi,
-    // RUT with spaces: 12 345 678-9
-    /\b(\d{1,2}\s\d{3}\s\d{3}-[0-9K])\b/gi,
-    // RUT in forms: RUT: 12.345.678-9
-    /RUT\s*:?\s*(\d{1,2}\.?\d{3}\.?\d{3}-[0-9K])/gi,
-    // Cedula patterns: C.I.: 12.345.678-9
-    /C\.?I\.?\s*:?\s*(\d{1,2}\.?\d{3}\.?\d{3}-[0-9K])/gi,
-    // Run patterns: RUN: 12.345.678-9
-    /RUN\s*:?\s*(\d{1,2}\.?\d{3}\.?\d{3}-[0-9K])/gi
-  ]
-
-  for (const pattern of rutPatterns) {
-    const matches = text.match(pattern)
-    if (matches) {
-      for (const match of matches) {
-        // Extract just the RUT part
-        const rutMatch = match.match(/(\d{1,2}\.?\d{3}\.?\d{3}-[0-9K])/i)
-        if (rutMatch) {
-          const rut = rutMatch[1].toUpperCase()
-          if (validateChileanRUT(rut)) {
-            return formatChileanRUT(rut)
-          }
-        }
-      }
-    }
-  }
-
-  return null
+  // Use enhanced Chilean RUT parser
+  return extractBestChileanRUT(text)
 }
 
 /**
