@@ -53,7 +53,7 @@
 - [x] Implement file type validation (PDF only)
 - [x] Add patient identification extraction from first page
 - [x] Build manual RUT/name entry fallback form
-- [ ] Store PDFs securely in Supabase Storage
+- [x] Store PDFs securely in Supabase Storage
 
 ### Task 4: Chilean PDF Parsing (Requirement 3)
 - [ ] Create PDF text extraction using pdf-parse library

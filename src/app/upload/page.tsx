@@ -63,6 +63,12 @@ export default function UploadPage() {
     setSuccess(`Información del paciente extraída con ${patient.confidence}% de confianza`)
   }
 
+  const handleSuccess = (data: any) => {
+    setError(null)
+    setSuccess(`¡PDF procesado y almacenado exitosamente! Paciente: ${data.patient.name} (${data.patient.rut})`)
+    setExtractedPatient(null)
+  }
+
   return (
     <DashboardLayout>
       <Container size="3">
@@ -120,6 +126,7 @@ export default function UploadPage() {
             onFileSelect={handleFileSelect}
             onError={handleError}
             onPatientExtracted={handlePatientExtracted}
+            onSuccess={handleSuccess}
           />
 
           {/* Navigation */}

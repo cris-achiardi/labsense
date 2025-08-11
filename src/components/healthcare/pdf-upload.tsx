@@ -16,9 +16,10 @@ interface PDFUploadProps {
   onFileSelect: (file: File) => void
   onError: (error: string) => void
   onPatientExtracted?: (patient: PatientInfo) => void
+  onSuccess?: (data: any) => void
 }
 
-export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUploadProps) {
+export function PDFUpload({ onFileSelect, onError, onPatientExtracted, onSuccess }: PDFUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -118,6 +119,57 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
       onError('Error de conexión al procesar el PDF')
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const processAndStorePDF = async () => {
+    if (!selectedFile) return
+
+    setIsUploading(true)
+    
+    try {
+      const formData = new FormData()
+      formData.append('pdf', selectedFile)
+      
+      // Use confirmed patient data if available, otherwise use extracted data
+      const patientData = confirmedPatient || extractedPatient
+      if (patientData) {
+        formData.append('patientData', JSON.stringify(patientData))
+      }
+
+      const response = await fetch('/api/pdf/process-and-store', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        onError(data.error || 'Error al procesar y almacenar el PDF')
+        return
+      }
+
+      if (data.success) {
+        // Success! Reset form and show success message
+        setSelectedFile(null)
+        setExtractedPatient(null)
+        setConfirmedPatient(null)
+        setShowManualEntry(false)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+        
+        // Call success callback if provided
+        onSuccess?.(data.data)
+        
+        // Show detailed success message
+        alert(`¡PDF procesado exitosamente!\n\nPaciente: ${data.data.patient.name}\nRUT: ${data.data.patient.rut}\nConfianza: ${data.data.patient.confidence}%`)
+      }
+    } catch (error) {
+      console.error('Error processing and storing PDF:', error)
+      onError('Error de conexión al procesar el PDF')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -404,20 +456,21 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted }: PDFUplo
             variant="solid"
             disabled={isUploading}
             style={{ width: '100%' }}
+            onClick={() => processAndStorePDF()}
           >
             {isUploading ? (
               <Flex align="center" gap="2">
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                   hourglass_empty
                 </span>
-                Procesando resultados de laboratorio...
+                Procesando y almacenando...
               </Flex>
             ) : (
               <Flex align="center" gap="2">
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                  science
+                  cloud_upload
                 </span>
-                Procesar Resultados de Laboratorio
+                Procesar y Almacenar PDF
               </Flex>
             )}
           </Button>
