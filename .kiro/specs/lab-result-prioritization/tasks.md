@@ -57,8 +57,8 @@
 
 ### Task 4: Chilean PDF Parsing (Requirement 3)
 - [x] Create PDF text extraction using pdf-parse library
-- [ ] Implement Chilean RUT parser with validation algorithm
-- [ ] Build Spanish health marker extraction patterns
+- [x] Implement Chilean RUT parser with validation algorithm
+- [x] Build Spanish health marker extraction patterns
 - [ ] Add reference range parsing from PDF content
 - [ ] Create abnormal value detection with [ * ] markers
 
