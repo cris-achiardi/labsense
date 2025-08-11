@@ -56,7 +56,7 @@
 - [x] Store PDFs securely in Supabase Storage
 
 ### Task 4: Chilean PDF Parsing (Requirement 3)
-- [ ] Create PDF text extraction using pdf-parse library
+- [x] Create PDF text extraction using pdf-parse library
 - [ ] Implement Chilean RUT parser with validation algorithm
 - [ ] Build Spanish health marker extraction patterns
 - [ ] Add reference range parsing from PDF content

@@ -1,4 +1,5 @@
 import { validateChileanRUT, formatChileanRUT } from '@/lib/utils/chilean-rut'
+import { extractTextFromPDF } from './pdf-text-extractor'
 
 export interface PatientInfo {
   rut: string | null
@@ -181,16 +182,19 @@ function calculateConfidence(patient: PatientInfo): number {
  */
 export async function extractPatientFromPDF(pdfBuffer: Buffer): Promise<ExtractionResult> {
   try {
-    // Dynamic import to avoid build issues
-    const pdfParse = (await import('pdf-parse')).default
+    // Use enhanced PDF text extraction
+    const textExtraction = await extractTextFromPDF(pdfBuffer)
     
-    // Parse PDF and extract text
-    const pdfData = await pdfParse(pdfBuffer)
-    const fullText = pdfData.text
-
-    // Extract first page text (patient info is usually on first page)
-    const pages = fullText.split(/\f|\n\s*\n\s*\n/) // Split by form feed or multiple newlines
-    const firstPageText = pages[0] || fullText.substring(0, 2000) // First 2000 chars as fallback
+    if (!textExtraction.success) {
+      return {
+        success: false,
+        patient: null,
+        error: textExtraction.error || 'Error al extraer texto del PDF'
+      }
+    }
+    
+    // Use first page text for patient extraction (more reliable)
+    const firstPageText = textExtraction.firstPageText
 
     // Extract patient information
     const rut = extractRUT(firstPageText)
