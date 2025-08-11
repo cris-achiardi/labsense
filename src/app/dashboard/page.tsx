@@ -133,6 +133,31 @@ export default function DashboardPage() {
             </Card>
           </Flex>
 
+          {/* Upload Lab Results */}
+          <Card style={{ maxWidth: '600px' }}>
+            <Flex direction="column" gap="3">
+              <Heading size="5">Procesar Resultados de Laboratorio</Heading>
+              <Text size="3">
+                Sube archivos PDF de resultados de laboratorio para análisis automático y priorización de pacientes.
+              </Text>
+              <Flex gap="3">
+                <Button color="mint" variant="solid" asChild>
+                  <a href="/upload">
+                    <Flex align="center" gap="2">
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                        upload_file
+                      </span>
+                      Subir Resultado PDF
+                    </Flex>
+                  </a>
+                </Button>
+                <Button color="mint" variant="outline" asChild>
+                  <a href="/patients">Ver Todos los Pacientes</a>
+                </Button>
+              </Flex>
+            </Flex>
+          </Card>
+
           {/* Admin Panel Access */}
           {session.user.role === 'admin' && (
             <Card style={{ maxWidth: '600px' }}>
