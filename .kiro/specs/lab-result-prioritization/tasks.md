@@ -79,10 +79,10 @@
 - [x] Create audit_logs table for compliance tracking
 
 ### Task 7: Abnormal Value Detection (Requirement 4)
-- [ ] Implement severity classification (mild/moderate/severe)
-- [ ] Create priority scoring algorithm with weights
-- [ ] Add critical value thresholds (glucose >250, HbA1c >10)
-- [ ] Build abnormal flags storage system
+- [x] Implement severity classification (mild/moderate/severe)
+- [x] Create priority scoring algorithm with weights
+- [x] Add critical value thresholds (glucose >250, HbA1c >10)
+- [x] Build abnormal flags storage system
 
 ## Phase 4: Dashboard & UI
 
