@@ -4,7 +4,9 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { DashboardLayout } from '@/components/ui/dashboard-layout'
-import { Card, Heading, Text, Button, Badge, Flex, Box, Container } from '@radix-ui/themes'
+import { PrioritizedPatientList } from '@/components/dashboard/prioritized-patient-list'
+import { DashboardSummary } from '@/components/dashboard/dashboard-summary'
+import { Card, Heading, Text, Button, Flex, Box, Container } from '@radix-ui/themes'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -42,96 +44,24 @@ export default function DashboardPage() {
               Dashboard de Pacientes
             </Heading>
             <Text size="4" style={{ color: 'var(--gray-11)' }}>
-              Resultados de laboratorio priorizados por urgencia médica
+              Sistema inteligente de priorización de resultados de laboratorio
             </Text>
           </Box>
 
-          {/* Patient Cards */}
-          <Flex gap="4" wrap="wrap">
-            {/* High Priority Patient */}
-            <Card style={{ width: '320px' }}>
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Text weight="bold">****** ******* ****</Text>
-                  <Badge color="red" variant="solid">ALTA PRIORIDAD</Badge>
-                </Flex>
-                <Text size="2" style={{ color: 'var(--gray-11)' }}>
-                  RUT: **.***.**-* • Edad: 73a 3m 17d
-                </Text>
-                <Box>
-                  <Text size="2" weight="medium" style={{ color: 'var(--red-11)' }}>
-                    Valores Anormales:
-                  </Text>
-                  <Text size="2" as="div">
-                    • Glucosa: 269 mg/dL (normal: 74-106)
-                  </Text>
-                  <Text size="2" as="div">
-                    • HbA1c: 11.8% (normal: 4-6)
-                  </Text>
-                  <Text size="2" as="div">
-                    • TSH: 11.040 μUI/mL (normal: 0.55-4.78)
-                  </Text>
-                </Box>
-                <Button color="mint" variant="solid">
-                  Ver Detalles
-                </Button>
-              </Flex>
-            </Card>
+          {/* Dashboard Summary */}
+          <DashboardSummary 
+            userId={session.user.id} 
+            userEmail={session.user.email || ''} 
+          />
 
-            {/* Medium Priority Patient */}
-            <Card style={{ width: '320px' }}>
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Text weight="bold">****** *******</Text>
-                  <Badge color="orange" variant="solid">PRIORIDAD MEDIA</Badge>
-                </Flex>
-                <Text size="2" style={{ color: 'var(--gray-11)' }}>
-                  RUT: **.***.**-* • Edad: 45a 2m 10d
-                </Text>
-                <Box>
-                  <Text size="2" weight="medium" style={{ color: 'var(--orange-11)' }}>
-                    Valores Anormales:
-                  </Text>
-                  <Text size="2" as="div">
-                    • Colesterol: 220 mg/dL (normal: &lt;200)
-                  </Text>
-                  <Text size="2" as="div">
-                    • Triglicéridos: 180 mg/dL (normal: &lt;150)
-                  </Text>
-                </Box>
-                <Button color="mint" variant="outline">
-                  Ver Detalles
-                </Button>
-              </Flex>
-            </Card>
-
-            {/* Normal Patient */}
-            <Card style={{ width: '320px' }}>
-              <Flex direction="column" gap="3">
-                <Flex justify="between" align="center">
-                  <Text weight="bold">****** ******</Text>
-                  <Badge color="green" variant="solid">NORMAL</Badge>
-                </Flex>
-                <Text size="2" style={{ color: 'var(--gray-11)' }}>
-                  RUT: **.***.**-* • Edad: 32a 8m 5d
-                </Text>
-                <Box>
-                  <Text size="2" weight="medium" style={{ color: 'var(--green-11)' }}>
-                    Todos los valores normales
-                  </Text>
-                  <Text size="2" as="div">
-                    • Glucosa: 95 mg/dL ✓
-                  </Text>
-                  <Text size="2" as="div">
-                    • Colesterol: 180 mg/dL ✓
-                  </Text>
-                </Box>
-                <Button color="mint" variant="soft">
-                  Ver Detalles
-                </Button>
-              </Flex>
-            </Card>
-          </Flex>
+          {/* Prioritized Patient List - Now using real data */}
+          <PrioritizedPatientList 
+            limit={10} 
+            showTitle={true}
+            onPatientClick={(patientId) => {
+              router.push(`/patients/${patientId}`)
+            }}
+          />
 
           {/* Upload Lab Results */}
           <Card style={{ maxWidth: '600px' }}>

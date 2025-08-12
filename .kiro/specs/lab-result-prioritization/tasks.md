@@ -92,9 +92,9 @@
 - [x] Add patient identification display (name, RUT) with proper typography
 - [x] Build abnormal markers summary view with Radix Card components
 - [x] Setup healthcare-specific CSS classes using Radix design tokens
-- [ ] Create functional prioritized patient list component
-- [ ] Connect to real data instead of demo data
-- [ ] Create "contacted" status update functionality
+- [x] Create functional prioritized patient list component
+- [x] Connect to real data instead of demo data
+- [x] Create "contacted" status update functionality
 
 ### Task 9: Patient Details View (Requirement 6)
 - [ ] Build individual patient results page

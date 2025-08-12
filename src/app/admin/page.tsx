@@ -65,8 +65,26 @@ export default function AdminPage() {
                 <Text size="2" style={{ color: 'var(--gray-11)' }}>
                   Administrar roles y permisos de usuarios del sistema
                 </Text>
-                <Button color="mint" variant="solid">
-                  Gestionar Usuarios
+                <Button color="mint" variant="solid" asChild>
+                  <a href="/admin/users">Gestionar Usuarios</a>
+                </Button>
+              </Flex>
+            </Card>
+
+            {/* Test Data Management */}
+            <Card style={{ width: '320px' }}>
+              <Flex direction="column" gap="3">
+                <Flex align="center" gap="2">
+                  <span className="material-symbols-outlined" style={{ color: 'var(--mint-11)' }}>
+                    database
+                  </span>
+                  <Text weight="bold" size="4">Datos de Prueba</Text>
+                </Flex>
+                <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                  Poblar el sistema con datos de prueba para desarrollo
+                </Text>
+                <Button color="mint" variant="solid" asChild>
+                  <a href="/admin/test-data">Gestionar Datos</a>
                 </Button>
               </Flex>
             </Card>
