@@ -1,10 +1,6 @@
-import { Metadata } from 'next'
-import { ManualReviewQueue } from '@/components/validation/manual-review-queue'
+'use client'
 
-export const metadata: Metadata = {
-  title: 'Revisión Manual - LabSense',
-  description: 'Sistema de revisión manual para reportes de laboratorio con baja confianza'
-}
+import { ManualReviewQueue } from '@/components/validation/manual-review-queue'
 
 export default function ManualReviewPage() {
   return (
