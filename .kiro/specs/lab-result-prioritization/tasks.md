@@ -72,11 +72,11 @@
 ## Phase 3: Database & Data Models
 
 ### Task 6: Database Schema
-- [ ] Create patients table with RUT unique constraint
-- [ ] Build lab_reports table with priority scoring
-- [ ] Implement health_markers table with Spanish terminology
-- [ ] Add normal_ranges table for reference values
-- [ ] Create audit_logs table for compliance tracking
+- [x] Create patients table with RUT unique constraint
+- [x] Build lab_reports table with priority scoring
+- [x] Implement health_markers table with Spanish terminology
+- [x] Add normal_ranges table for reference values
+- [x] Create audit_logs table for compliance tracking
 
 ### Task 7: Abnormal Value Detection (Requirement 4)
 - [ ] Implement severity classification (mild/moderate/severe)
