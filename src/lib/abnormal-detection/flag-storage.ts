@@ -59,7 +59,7 @@ export class AbnormalFlagStorage {
       // 2. Create abnormal flags for abnormal values
       const flagsToCreate: Omit<AbnormalFlag, 'id' | 'flagged_at'>[] = []
       
-      for (const [markerId, classification] of classifications) {
+      for (const [markerId, classification] of Array.from(classifications.entries())) {
         if (!classification.isAbnormal) continue
 
         const marker = healthMarkers.find(m => m.id === markerId)
@@ -151,11 +151,11 @@ export class AbnormalFlagStorage {
     let isAboveRange = false
     let isBelowRange = false
 
-    if (normalRange.max_value !== null && value > normalRange.max_value) {
+    if (normalRange.max_value != null && value > normalRange.max_value) {
       isAboveRange = true
     }
 
-    if (normalRange.min_value !== null && value < normalRange.min_value) {
+    if (normalRange.min_value != null && value < normalRange.min_value) {
       isBelowRange = true
     }
 
@@ -370,10 +370,12 @@ export class AbnormalFlagStorage {
         .from('abnormal_flags')
         .delete()
         .in('health_marker_id', 
-          supabase
+          // Get health marker IDs first
+          (await supabase
             .from('health_markers')
             .select('id')
             .eq('lab_report_id', labReportId)
+          ).data?.map(hm => hm.id) || []
         )
 
       if (error) {

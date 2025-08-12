@@ -98,14 +98,14 @@ export class PriorityScorer {
     let baseScore = 0
 
     // 1. Calculate base severity scores
-    for (const [markerId, classification] of classifications) {
+    for (const [markerId, classification] of Array.from(classifications.entries())) {
       if (!classification.isAbnormal) continue
 
       const marker = markers.find(m => m.id === markerId)
       if (!marker) continue
 
       // Base severity score
-      const severityScore = this.SEVERITY_SCORES[classification.severity]
+      const severityScore = this.SEVERITY_SCORES[classification.severity as keyof typeof this.SEVERITY_SCORES]
       breakdown.severityScore += severityScore
       baseScore += severityScore
 
@@ -198,7 +198,7 @@ export class PriorityScorer {
   ): Omit<AbnormalFlag, 'id' | 'flagged_at'>[] {
     const flags: Omit<AbnormalFlag, 'id' | 'flagged_at'>[] = []
 
-    for (const [markerId, classification] of classifications) {
+    for (const [markerId, classification] of Array.from(classifications.entries())) {
       if (!classification.isAbnormal) continue
 
       const marker = markers.find(m => m.id === markerId)
@@ -312,12 +312,12 @@ export class PriorityScorer {
 
     let totalScore = 0
 
-    for (const score of scores.values()) {
-      distribution[score.priorityLevel]++
+    Array.from(scores.values()).forEach(score => {
+      distribution[score.priorityLevel as keyof typeof distribution]++
       totalScore += score.totalScore
       distribution.maxScore = Math.max(distribution.maxScore, score.totalScore)
       distribution.minScore = Math.min(distribution.minScore, score.totalScore)
-    }
+    })
 
     distribution.averageScore = scores.size > 0 ? totalScore / scores.size : 0
     if (distribution.minScore === Infinity) distribution.minScore = 0

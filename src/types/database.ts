@@ -9,10 +9,10 @@ export interface Patient {
   age_at_test?: number
   sex?: 'M' | 'F' | 'masculino' | 'femenino'
   priority_score: number
-  last_contact_date?: Date
+  last_contact_date?: string | Date
   contact_status: 'pending' | 'contacted' | 'processed'
-  created_at: Date
-  updated_at: Date
+  created_at: string | Date
+  updated_at: string | Date
 }
 
 export interface LabReport {
@@ -21,16 +21,16 @@ export interface LabReport {
   file_name: string
   file_path: string
   file_size: number
-  upload_date: Date
+  upload_date: string | Date
   uploaded_by: string // User email
   extraction_confidence: number
   processing_status: 'pending' | 'processed' | 'failed'
   priority_score: number
-  test_date?: Date
+  test_date?: string | Date
   laboratory_name?: string
   status: 'pending' | 'processed' | 'contacted' | 'failed'
-  created_at: Date
-  updated_at: Date
+  created_at: string | Date
+  updated_at: string | Date
 }
 
 export interface HealthMarker {
@@ -45,21 +45,21 @@ export interface HealthMarker {
   abnormal_indicator?: string // [ * ] or other markers from PDF
   severity?: 'normal' | 'mild' | 'moderate' | 'severe'
   is_critical_value: boolean
-  created_at: Date
-  updated_at: Date
+  created_at: string | Date
+  updated_at: string | Date
 }
 
 export interface NormalRange {
   id: string
   marker_type: string
-  min_value?: number
-  max_value?: number
+  min_value?: number | null
+  max_value?: number | null
   unit: string
   source: string
   raw_text?: string // Original reference text from PDF
   is_active: boolean
-  created_at: Date
-  updated_at: Date
+  created_at: string | Date
+  updated_at: string | Date
 }
 
 export interface AbnormalFlag {
@@ -69,7 +69,7 @@ export interface AbnormalFlag {
   is_above_range: boolean
   is_below_range: boolean
   priority_weight: number
-  flagged_at: Date
+  flagged_at: string | Date
 }
 
 export interface AuditLog {
@@ -83,7 +83,7 @@ export interface AuditLog {
   details?: Record<string, any>
   ip_address?: string
   user_agent?: string
-  created_at: Date
+  created_at: string | Date
 }
 
 // View types
@@ -93,9 +93,9 @@ export interface PrioritizedPatient {
   rut: string
   priority_score: number
   contact_status: 'pending' | 'contacted' | 'processed'
-  last_contact_date?: Date
-  test_date?: Date
-  upload_date: Date
+  last_contact_date?: string | Date
+  test_date?: string | Date
+  upload_date: string | Date
   laboratory_name?: string
   abnormal_count: number
   abnormal_markers?: string
@@ -244,6 +244,8 @@ export type AuditAction =
   | 'UPDATE_NORMAL_RANGES'
   | 'VIEW_AUDIT_LOGS'
   | 'EXPORT_DATA'
+  | 'VIEW_DASHBOARD'
+  | 'CREATE_ABNORMAL_FLAGS'
 
 export type ResourceType = 
   | 'patient'
@@ -253,3 +255,4 @@ export type ResourceType =
   | 'user_profile'
   | 'normal_range'
   | 'audit_log'
+  | 'dashboard'

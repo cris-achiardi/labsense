@@ -72,6 +72,7 @@ export const dbOperations = {
       file_name: fileName,
       file_path: filePath,
       file_size: fileSize,
+      upload_date: new Date(),
       uploaded_by: uploadedBy,
       extraction_confidence: extractedData?.validationResult?.confidence ? 
         Math.round(extractedData.validationResult.confidence * 100) : 0,
@@ -120,7 +121,10 @@ export const dbOperations = {
       highPriorityPatients: patients.filter(p => p.priority_level === 'HIGH').length,
       processedToday: patients.filter(p => {
         const today = new Date().toISOString().split('T')[0]
-        return p.last_contact_date?.startsWith(today)
+        const contactDate = typeof p.last_contact_date === 'string' 
+          ? p.last_contact_date 
+          : p.last_contact_date?.toISOString()
+        return contactDate?.startsWith(today)
       }).length,
       averageConfidence: 0, // Would need to calculate from lab reports
       criticalValuesDetected: patients.filter(p => p.priority_level === 'HIGH').length

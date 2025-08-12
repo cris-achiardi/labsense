@@ -26,7 +26,7 @@ export class SeverityClassifier {
     const { min_value, max_value } = normalRange
 
     // Check if value is within normal range
-    const isWithinRange = this.isValueWithinRange(value, min_value, max_value)
+    const isWithinRange = this.isValueWithinRange(value, min_value ?? null, max_value ?? null)
     
     if (isWithinRange) {
       return {
@@ -40,8 +40,8 @@ export class SeverityClassifier {
     }
 
     // Calculate deviation from normal range
-    const deviation = this.calculateDeviation(value, min_value, max_value)
-    const deviationPercent = this.calculateDeviationPercent(deviation, min_value, max_value)
+    const deviation = this.calculateDeviation(value, min_value ?? null, max_value ?? null)
+    const deviationPercent = this.calculateDeviationPercent(deviation, min_value ?? null, max_value ?? null)
 
     // Check for critical values first (overrides other classifications)
     const isCriticalValue = this.isCriticalValue(marker_type, value)
@@ -167,7 +167,7 @@ export class SeverityClassifier {
     unit: string,
     normalRange: NormalRange
   ): string {
-    const rangeText = this.formatRangeText(normalRange.min_value, normalRange.max_value, unit)
+    const rangeText = this.formatRangeText(normalRange.min_value ?? null, normalRange.max_value ?? null, unit)
     
     if (isAbove) {
       switch (severity) {
@@ -253,11 +253,11 @@ export class SeverityClassifier {
       totalPriorityWeight: 0
     }
 
-    for (const classification of classifications.values()) {
-      summary[classification.severity]++
+    Array.from(classifications.values()).forEach(classification => {
+      summary[classification.severity as keyof typeof summary]++
       if (classification.isCriticalValue) summary.critical++
       summary.totalPriorityWeight += classification.priorityWeight
-    }
+    })
 
     return summary
   }

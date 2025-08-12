@@ -268,7 +268,7 @@ export class AbnormalDetectionService {
 
     let totalPriorityScore = 0
 
-    for (const result of results.values()) {
+    Array.from(results.values()).forEach(result => {
       if (result.summary.abnormalMarkers > 0) {
         stats.reportsWithAbnormals++
       }
@@ -277,13 +277,13 @@ export class AbnormalDetectionService {
         stats.reportsWithCriticals++
       }
 
-      stats.priorityDistribution[result.priorityScore.priorityLevel]++
-      stats.severityDistribution[result.summary.highestSeverity]++
+      stats.priorityDistribution[result.priorityScore.priorityLevel as keyof typeof stats.priorityDistribution]++
+      stats.severityDistribution[result.summary.highestSeverity as keyof typeof stats.severityDistribution]++
       
       totalPriorityScore += result.priorityScore.totalScore
       stats.totalAbnormalMarkers += result.summary.abnormalMarkers
       stats.totalCriticalValues += result.summary.criticalMarkers
-    }
+    })
 
     stats.averagePriorityScore = results.size > 0 ? totalPriorityScore / results.size : 0
 
