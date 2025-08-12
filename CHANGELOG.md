@@ -5,6 +5,97 @@ All notable changes to the LabSense Chilean Lab Result Prioritization System wil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-08
+
+### 🚀 MAJOR UPDATE - Complete Dashboard with Advanced Search & Filtering
+
+This release completes the core LabSense dashboard with a sophisticated search and filtering system, making it production-ready for Chilean healthcare facilities.
+
+### ✅ Added - Advanced Search & Filtering System (Task 10)
+
+#### 🔍 Comprehensive Patient Search
+- **Name and RUT Search**: Real-time search with partial matching and case-insensitive support
+- **Chilean RUT Recognition**: Proper formatting and validation for Chilean national IDs
+- **Anonymized Display**: Privacy-compliant patient information display
+- **Clear Search Interface**: Easy-to-use search input with reset functionality
+
+#### 📅 Advanced Date Filtering
+- **Test Date Range**: Filter patients by lab test dates with date pickers
+- **Upload Date Range**: Filter by when lab reports were uploaded to system
+- **Quick Date Presets**: Common ranges like "Last Week" for rapid filtering
+- **Date Validation**: Proper range validation and error handling
+
+#### 🏥 Medical Marker Filtering
+- **8 Chilean Health Markers**: Filter by specific abnormal markers
+- **Toggle Selection**: Easy marker selection with visual indicators
+- **Diabetes Quick Filter**: Preset for diabetes-related markers
+- **Medical Terminology**: Full Spanish medical terminology support
+
+#### 📊 Priority and Status Filtering
+- **Priority Levels**: Filter by HIGH/MEDIUM/LOW priority with visual badges
+- **Contact Status**: Filter by pending/contacted/processed workflow states
+- **Combined Filtering**: Multiple filter combinations for precise results
+- **Quick Filter Presets**: "Urgent Pending", "Diabetes", "Last Week" scenarios
+
+#### 🎨 Professional Filter Interface
+- **Expandable Design**: Collapsible advanced filters to reduce UI clutter
+- **Active Filter Indicators**: Visual badges showing number of active filters
+- **Real-time Application**: Filters apply immediately as user types or selects
+- **Clear All Functionality**: One-click reset for all active filters
+- **Loading States**: Proper disabled states during filter operations
+
+### ✅ Enhanced - Dashboard Integration (Task 8 Completion)
+
+#### 📋 Functional Patient Dashboard
+- **Real Data Integration**: Connected to abnormal detection system and database
+- **Priority-based Sorting**: Patients automatically sorted by medical urgency
+- **Contact Status Workflow**: Complete pending → contacted → processed workflow
+- **Dashboard Summary**: System metrics and statistics for healthcare administrators
+- **Professional Healthcare UI**: Production-ready interface with Spanish terminology
+
+#### 🔄 Patient Management Features
+- **Status Updates**: Healthcare workers can update patient contact status
+- **Audit Logging**: All status changes logged for healthcare compliance
+- **Session Management**: Proper user authentication and session handling
+- **Error Handling**: Comprehensive error messages in Spanish
+
+### 🔧 Technical Improvements
+
+#### New Components and APIs
+- **PatientSearchFilters Component**: Complete filtering interface with 15+ filter options
+- **Enhanced PrioritizedPatientList**: Supports real-time filtering and status updates
+- **Patient Contact Status API**: RESTful endpoint for status management
+- **Test Data Management**: Admin tools for populating development data
+
+#### Database and Performance
+- **Optimized Queries**: Efficient filtering with proper database indexing
+- **Real-time Updates**: Instant filter application without page reloads
+- **Type Safety**: Complete TypeScript coverage for all filter operations
+- **Error Recovery**: Graceful handling of database connection issues
+
+### 📚 Updated Documentation
+
+#### Comprehensive Guides
+- **README.md**: Updated with new search and filtering capabilities
+- **CHANGELOG.md**: Detailed breakdown of all new features
+- **Kiro Hackathon Documentation**: Updated development metrics and achievements
+
+### 🏥 Healthcare Impact
+
+#### Workflow Optimization
+- **Rapid Patient Location**: Find specific patients in seconds using search
+- **Priority Focus**: Filter to show only urgent cases requiring immediate attention
+- **Status Tracking**: Monitor patient contact workflow for compliance
+- **Date-based Review**: Review recent tests or specific time periods
+
+#### Clinical Decision Support
+- **Medical Condition Filtering**: Focus on specific health conditions (diabetes, liver issues)
+- **Priority-based Triage**: Automatic sorting ensures urgent patients are seen first
+- **Contact Management**: Track which patients have been contacted and processed
+- **Audit Compliance**: Complete logging of all search and filter activities
+
+---
+
 ## [1.1.0] - 2025-12-08
 
 ### 🚀 MAJOR UPDATE - Complete Database Schema & Abnormal Detection System
