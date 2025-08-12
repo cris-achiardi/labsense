@@ -2,15 +2,18 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { DashboardLayout } from '@/components/ui/dashboard-layout'
 import { PrioritizedPatientList } from '@/components/dashboard/prioritized-patient-list'
 import { DashboardSummary } from '@/components/dashboard/dashboard-summary'
+import { PatientSearchFilters } from '@/components/dashboard/patient-search-filters'
 import { Card, Heading, Text, Button, Flex, Box, Container } from '@radix-ui/themes'
+import { PatientFilters } from '@/types/database'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [filters, setFilters] = useState<PatientFilters>({})
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -54,10 +57,17 @@ export default function DashboardPage() {
             userEmail={session.user.email || ''} 
           />
 
-          {/* Prioritized Patient List - Now using real data */}
+          {/* Search and Filters */}
+          <PatientSearchFilters
+            onFiltersChange={setFilters}
+            onClearFilters={() => setFilters({})}
+          />
+
+          {/* Prioritized Patient List - Now using real data with filters */}
           <PrioritizedPatientList 
-            limit={10} 
-            showTitle={true}
+            limit={20} 
+            showTitle={false}
+            filters={filters}
             onPatientClick={(patientId) => {
               router.push(`/patients/${patientId}`)
             }}

@@ -96,17 +96,18 @@
 - [x] Connect to real data instead of demo data
 - [x] Create "contacted" status update functionality
 
-### Task 9: Patient Details View (Requirement 6)
-- [ ] Build individual patient results page
-- [ ] Implement historical lab results display
-- [ ] Add trend indicators (improving/worsening/stable)
-- [ ] Create detailed abnormal values highlighting
+### Task 9: Patient Details View (Requirement 6) - SKIPPED
+**Note:** Skipping this task to focus on core dashboard functionality. Individual patient details can be implemented in future iterations.
+- [ ] ~~Build individual patient results page~~ (Skipped)
+- [ ] ~~Implement historical lab results display~~ (Skipped)
+- [ ] ~~Add trend indicators (improving/worsening/stable)~~ (Skipped)
+- [ ] ~~Create detailed abnormal values highlighting~~ (Skipped)
 
 ### Task 10: Search & Filtering (Requirement 10)
-- [ ] Implement patient search by name and RUT
-- [ ] Add date range filtering for upload/test dates
-- [ ] Create health marker filtering options
-- [ ] Build priority level filtering
+- [x] Implement patient search by name and RUT
+- [x] Add date range filtering for upload/test dates
+- [x] Create health marker filtering options
+- [x] Build priority level filtering
 
 ## Phase 5: Healthcare Features
 

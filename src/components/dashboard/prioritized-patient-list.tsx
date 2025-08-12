@@ -3,19 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, Heading, Text, Button, Badge, Flex, Box, Container, Spinner } from '@radix-ui/themes'
-import { PrioritizedPatient } from '@/types/database'
+import { PrioritizedPatient, PatientFilters } from '@/types/database'
 import { db } from '@/lib/database'
 
 interface PrioritizedPatientListProps {
   limit?: number
   showTitle?: boolean
   onPatientClick?: (patientId: string) => void
+  filters?: PatientFilters
 }
 
 export function PrioritizedPatientList({ 
   limit = 10, 
   showTitle = true,
-  onPatientClick 
+  onPatientClick,
+  filters 
 }: PrioritizedPatientListProps) {
   const { data: session } = useSession()
   const [patients, setPatients] = useState<PrioritizedPatient[]>([])
@@ -25,15 +27,15 @@ export function PrioritizedPatientList({
 
   useEffect(() => {
     loadPatients()
-  }, [limit])
+  }, [limit, filters])
 
   const loadPatients = async () => {
     try {
       setLoading(true)
       setError(null)
       
-      // Get prioritized patients from database
-      const prioritizedPatients = await db.getPrioritizedPatients(limit, 0)
+      // Get prioritized patients from database with filters
+      const prioritizedPatients = await db.getPrioritizedPatients(limit, 0, filters)
       setPatients(prioritizedPatients)
     } catch (err) {
       console.error('Error loading patients:', err)
