@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Card, 
-  Heading, 
-  Text, 
-  Button, 
-  TextField, 
-  Select, 
-  Flex, 
-  Box, 
+import {
+  Card,
+  Heading,
+  Text,
+  Button,
+  TextField,
+  Select,
+  Flex,
+  Box,
   Badge,
   IconButton
 } from '@radix-ui/themes'
@@ -22,15 +22,15 @@ interface PatientSearchFiltersProps {
   resultCount?: number
 }
 
-export function PatientSearchFilters({ 
-  onFiltersChange, 
-  onClearFilters, 
+export function PatientSearchFilters({
+  onFiltersChange,
+  onClearFilters,
   loading = false,
-  resultCount 
+  resultCount
 }: PatientSearchFiltersProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [priorityLevel, setPriorityLevel] = useState<'HIGH' | 'MEDIUM' | 'LOW' | 'all' | ''>('')
-  const [contactStatus, setContactStatus] = useState<'pending' | 'contacted' | 'processed' | 'all' | ''>('')
+  const [priorityLevel, setPriorityLevel] = useState<'HIGH' | 'MEDIUM' | 'LOW' | 'all'>('all')
+  const [contactStatus, setContactStatus] = useState<'pending' | 'contacted' | 'processed' | 'all'>('all')
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
   const [markerTypes, setMarkerTypes] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -55,12 +55,12 @@ export function PatientSearchFilters({
       filters.searchQuery = searchQuery.trim()
     }
 
-    if (priorityLevel && priorityLevel !== 'all' && priorityLevel !== '') {
-      filters.priorityLevel = priorityLevel as 'HIGH' | 'MEDIUM' | 'LOW'
+    if (priorityLevel !== 'all') {
+      filters.priorityLevel = priorityLevel
     }
 
-    if (contactStatus && contactStatus !== 'all' && contactStatus !== '') {
-      filters.contactStatus = contactStatus as 'pending' | 'contacted' | 'processed'
+    if (contactStatus !== 'all') {
+      filters.contactStatus = contactStatus
     }
 
     if (dateRange.start && dateRange.end) {
@@ -79,8 +79,8 @@ export function PatientSearchFilters({
 
   const handleClearFilters = () => {
     setSearchQuery('')
-    setPriorityLevel('')
-    setContactStatus('')
+    setPriorityLevel('all')
+    setContactStatus('all')
     setDateRange({ start: '', end: '' })
     setMarkerTypes([])
     setShowAdvanced(false)
@@ -88,17 +88,17 @@ export function PatientSearchFilters({
   }
 
   const toggleMarkerType = (markerType: string) => {
-    setMarkerTypes(prev => 
+    setMarkerTypes(prev =>
       prev.includes(markerType)
         ? prev.filter(type => type !== markerType)
         : [...prev, markerType]
     )
   }
 
-  const hasActiveFilters = searchQuery || 
-                          (priorityLevel && priorityLevel !== 'all') || 
-                          (contactStatus && contactStatus !== 'all') || 
-                          dateRange.start || dateRange.end || markerTypes.length > 0
+  const hasActiveFilters = searchQuery ||
+    priorityLevel !== 'all' ||
+    contactStatus !== 'all' ||
+    dateRange.start || dateRange.end || markerTypes.length > 0
 
   return (
     <Card>
@@ -113,19 +113,19 @@ export function PatientSearchFilters({
               </Text>
             )}
           </Box>
-          
+
           <Flex gap="2" align="center">
             {hasActiveFilters && (
               <Badge color="mint" variant="soft">
                 {[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
                   .filter(Boolean).length} filtro{[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
-                  .filter(Boolean).length !== 1 ? 's' : ''} activo{[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
-                  .filter(Boolean).length !== 1 ? 's' : ''}
+                    .filter(Boolean).length !== 1 ? 's' : ''} activo{[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
+                      .filter(Boolean).length !== 1 ? 's' : ''}
               </Badge>
             )}
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               size="2"
               onClick={() => setShowAdvanced(!showAdvanced)}
             >
@@ -158,8 +158,8 @@ export function PatientSearchFilters({
               </TextField.Slot>
               {searchQuery && (
                 <TextField.Slot>
-                  <IconButton 
-                    size="1" 
+                  <IconButton
+                    size="1"
                     variant="ghost"
                     onClick={() => setSearchQuery('')}
                   >
@@ -176,8 +176,8 @@ export function PatientSearchFilters({
             <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
               Prioridad
             </Text>
-            <Select.Root 
-              value={priorityLevel} 
+            <Select.Root
+              value={priorityLevel}
               onValueChange={(value) => setPriorityLevel(value as any)}
               disabled={loading}
             >
@@ -210,8 +210,8 @@ export function PatientSearchFilters({
             <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
               Estado
             </Text>
-            <Select.Root 
-              value={contactStatus} 
+            <Select.Root
+              value={contactStatus}
               onValueChange={(value) => setContactStatus(value as any)}
               disabled={loading}
             >
@@ -241,8 +241,8 @@ export function PatientSearchFilters({
           </Box>
 
           {hasActiveFilters && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               color="gray"
               onClick={handleClearFilters}
               disabled={loading}
@@ -259,8 +259,8 @@ export function PatientSearchFilters({
 
         {/* Advanced Filters */}
         {showAdvanced && (
-          <Box style={{ 
-            borderTop: '1px solid var(--gray-6)', 
+          <Box style={{
+            borderTop: '1px solid var(--gray-6)',
             paddingTop: 'var(--space-4)',
             marginTop: 'var(--space-2)'
           }}>
@@ -342,7 +342,7 @@ export function PatientSearchFilters({
                 Urgentes Pendientes
               </Flex>
             </Button>
-            
+
             <Button
               variant="outline"
               size="2"
@@ -362,7 +362,7 @@ export function PatientSearchFilters({
                 Última Semana
               </Flex>
             </Button>
-            
+
             <Button
               variant="outline"
               size="2"
