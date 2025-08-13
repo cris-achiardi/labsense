@@ -29,8 +29,8 @@ export function PatientSearchFilters({
   resultCount 
 }: PatientSearchFiltersProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [priorityLevel, setPriorityLevel] = useState<'HIGH' | 'MEDIUM' | 'LOW' | ''>('')
-  const [contactStatus, setContactStatus] = useState<'pending' | 'contacted' | 'processed' | ''>('')
+  const [priorityLevel, setPriorityLevel] = useState<'HIGH' | 'MEDIUM' | 'LOW' | 'all' | ''>('')
+  const [contactStatus, setContactStatus] = useState<'pending' | 'contacted' | 'processed' | 'all' | ''>('')
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
   const [markerTypes, setMarkerTypes] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -55,12 +55,12 @@ export function PatientSearchFilters({
       filters.searchQuery = searchQuery.trim()
     }
 
-    if (priorityLevel && priorityLevel !== 'all') {
-      filters.priorityLevel = priorityLevel
+    if (priorityLevel && priorityLevel !== 'all' && priorityLevel !== '') {
+      filters.priorityLevel = priorityLevel as 'HIGH' | 'MEDIUM' | 'LOW'
     }
 
-    if (contactStatus && contactStatus !== 'all') {
-      filters.contactStatus = contactStatus
+    if (contactStatus && contactStatus !== 'all' && contactStatus !== '') {
+      filters.contactStatus = contactStatus as 'pending' | 'contacted' | 'processed'
     }
 
     if (dateRange.start && dateRange.end) {

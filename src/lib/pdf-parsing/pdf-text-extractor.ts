@@ -21,12 +21,7 @@ export interface PDFExtractionResult {
  * Extracts and processes text from Chilean lab report PDFs
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
-  // Temporarily disable debug mode to prevent pdf-parse from trying to read test files
-  const originalNodeEnv = process.env.NODE_ENV
-  
   try {
-    process.env.NODE_ENV = 'production'
-    
     // Dynamic import to avoid build issues
     const pdfParse = (await import('pdf-parse')).default
     
@@ -45,9 +40,6 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     const cleanedFullText = cleanChileanLabText(fullText)
     const cleanedFirstPage = cleanChileanLabText(firstPageText)
     
-    // Restore original NODE_ENV
-    process.env.NODE_ENV = originalNodeEnv
-    
     return {
       success: true,
       fullText: cleanedFullText,
@@ -61,9 +53,6 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
       }
     }
   } catch (error) {
-    // Restore original NODE_ENV in case of error
-    process.env.NODE_ENV = originalNodeEnv
-    
     console.error('PDF text extraction error:', error)
     return {
       success: false,
