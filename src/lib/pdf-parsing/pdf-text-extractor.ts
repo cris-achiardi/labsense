@@ -24,22 +24,22 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
   try {
     // Dynamic import to avoid build issues
     const pdfParse = (await import('pdf-parse')).default
-    
+
     // Parse PDF with options optimized for Chilean lab reports
     const pdfData = await pdfParse(pdfBuffer)
 
     const fullText = pdfData.text
-    
+
     // Split text into pages using common PDF page separators
     const pages = splitTextIntoPages(fullText)
-    
+
     // Extract first page (where patient info is typically located)
     const firstPageText = pages[0] || fullText.substring(0, 3000)
-    
+
     // Clean and normalize text for better parsing
     const cleanedFullText = cleanChileanLabText(fullText)
     const cleanedFirstPage = cleanChileanLabText(firstPageText)
-    
+
     return {
       success: true,
       fullText: cleanedFullText,
@@ -76,9 +76,9 @@ function splitTextIntoPages(text: string): string[] {
     /Page\s+\d+/gi,          // "Page X" indicators
     /\n\s*-\s*\d+\s*-\s*\n/g // Page numbers like "- 1 -"
   ]
-  
+
   let pages = [text]
-  
+
   // Try each separator to split pages
   for (const separator of pageSeparators) {
     const newPages: string[] = []
@@ -91,7 +91,7 @@ function splitTextIntoPages(text: string): string[] {
       break // Use the first separator that successfully splits pages
     }
   }
-  
+
   return pages.filter(page => page.trim().length > 0)
 }
 
@@ -133,7 +133,7 @@ export function extractLabReportSections(text: string): {
     referenceRanges: '',
     observations: ''
   }
-  
+
   // Common section headers in Chilean lab reports
   const sectionPatterns = {
     patientInfo: /(?:DATOS\s+DEL\s+PACIENTE|INFORMACIÓN\s+DEL\s+PACIENTE|PACIENTE)/i,
@@ -141,15 +141,15 @@ export function extractLabReportSections(text: string): {
     referenceRanges: /(?:VALORES\s+DE\s+REFERENCIA|RANGOS\s+NORMALES)/i,
     observations: /(?:OBSERVACIONES|COMENTARIOS|NOTAS)/i
   }
-  
+
   // Split text into lines for section detection
   const lines = text.split('\n')
   let currentSection = 'patientInfo' // Default to patient info
-  
+
   for (const line of lines) {
     const trimmedLine = line.trim()
     if (trimmedLine.length === 0) continue
-    
+
     // Check if line matches any section header
     let foundSection = false
     for (const [sectionName, pattern] of Object.entries(sectionPatterns)) {
@@ -159,13 +159,13 @@ export function extractLabReportSections(text: string): {
         break
       }
     }
-    
+
     // Add line to current section (skip section headers)
     if (!foundSection) {
       sections[currentSection as keyof typeof sections] += trimmedLine + '\n'
     }
   }
-  
+
   return sections
 }
 
@@ -183,15 +183,15 @@ export function detectLabReportFormat(text: string): {
     'EXAMEN', 'RESULTADO', 'UNIDAD', 'VALOR DE REFERENCIA', 'MÉTODO',
     'PRUEBA', 'VALOR', 'RANGO', 'NORMAL', 'REFERENCIA'
   ]
-  
+
   const foundHeaders: string[] = []
   let hasTableStructure = false
-  
+
   // Check for table-like structure
   const lines = text.split('\n')
   for (const line of lines) {
     const upperLine = line.toUpperCase()
-    
+
     // Count how many headers are found in this line
     const headersInLine = commonHeaders.filter(header => upperLine.includes(header))
     if (headersInLine.length >= 3) {
@@ -199,7 +199,7 @@ export function detectLabReportFormat(text: string): {
       foundHeaders.push(...headersInLine)
     }
   }
-  
+
   // Determine format based on structure
   let format: 'table' | 'list' | 'mixed' | 'unknown' = 'unknown'
   if (hasTableStructure) {
@@ -209,9 +209,9 @@ export function detectLabReportFormat(text: string): {
     const hasListPattern = /^\s*[-•]\s+/m.test(text) || /:\s*\d+/m.test(text)
     format = hasListPattern ? 'list' : 'unknown'
   }
-  
+
   const confidence = Math.min(100, (foundHeaders.length / commonHeaders.length) * 100)
-  
+
   return {
     format,
     hasColumns: hasTableStructure,
