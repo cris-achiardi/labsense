@@ -22,26 +22,36 @@ export interface PDFExtractionResult {
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
+    // Create a safe environment for pdf-parse by ensuring the test directory exists
+    // This prevents the ENOENT error in production
+    if (typeof window === 'undefined') { // Server-side only
+      const fs = await import('fs')
+      const path = await import('path')
+
+      try {
+        const testDir = path.join(process.cwd(), 'test', 'data')
+        const testFile = path.join(testDir, '05-versions-space.pdf')
+
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(testDir)) {
+          fs.mkdirSync(testDir, { recursive: true })
+        }
+
+        // Create empty test file if it doesn't exist
+        if (!fs.existsSync(testFile)) {
+          fs.writeFileSync(testFile, Buffer.alloc(0))
+        }
+      } catch (fsError) {
+        // Ignore filesystem errors - we'll handle the pdf-parse error instead
+        console.warn('Could not create test directory for pdf-parse:', fsError)
+      }
+    }
+
     // Dynamic import to avoid build issues
     const pdfParse = (await import('pdf-parse')).default
 
-    // Parse PDF with error handling for debug mode issues
-    let pdfData
-    try {
-      pdfData = await pdfParse(pdfBuffer)
-    } catch (parseError: any) {
-      // Handle pdf-parse debug mode errors in production
-      if (parseError.code === 'ENOENT' && parseError.path?.includes('test/data')) {
-        // This is the debug mode error - pdf-parse is trying to access a test file
-        // The actual PDF parsing should still work, so we'll suppress this error
-        console.warn('pdf-parse debug mode error suppressed:', parseError.message)
-        // Try parsing again - the debug code usually runs only once
-        pdfData = await pdfParse(pdfBuffer)
-      } else {
-        // This is a real parsing error, re-throw it
-        throw parseError
-      }
-    }
+    // Parse PDF
+    const pdfData = await pdfParse(pdfBuffer)
 
     const fullText = pdfData.text
 
