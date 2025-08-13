@@ -67,12 +67,12 @@ function extractPatientName(text: string): string | null {
  * Extracts patient age from text
  */
 function extractAge(text: string): string | null {
-  // Chilean age patterns in medical documents
+  // Chilean age patterns in medical documents - preserve original format
   const agePatterns = [
+    // 73a 3m 17d (Chilean format: years, months, days) - keep full format
+    /(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
     // Edad: 45 años
     /EDAD\s*:?\s*(\d{1,3})\s*años?/i,
-    // 45a 2m 17d (Chilean format: years, months, days)
-    /(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
     // 45 años (standalone)
     /(\d{1,3})\s*años?/i,
     // Fecha de nacimiento calculation (if we find birth date)

@@ -44,9 +44,20 @@ export function ManualPatientEntry({ initialData, onPatientConfirmed, onCancel }
       newErrors.name = 'El nombre debe tener entre 5 y 50 caracteres'
     }
 
-    // Validate age (optional but if provided, should be valid)
-    if (age.trim() && (isNaN(Number(age)) || Number(age) < 0 || Number(age) > 120)) {
-      newErrors.age = 'Edad inválida (0-120 años)'
+    // Validate age (optional but if provided, should be valid Chilean format or simple number)
+    if (age.trim()) {
+      // Check if it's Chilean format (e.g., "73a 3m 17d") or simple number
+      const chileanAgePattern = /^\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d$/i
+      const simpleNumberPattern = /^\d{1,3}$/
+      
+      if (!chileanAgePattern.test(age.trim()) && !simpleNumberPattern.test(age.trim())) {
+        newErrors.age = 'Formato inválido. Use: "73a 3m 17d" o "73"'
+      } else if (simpleNumberPattern.test(age.trim())) {
+        const ageNum = Number(age.trim())
+        if (ageNum < 0 || ageNum > 120) {
+          newErrors.age = 'Edad inválida (0-120 años)'
+        }
+      }
     }
 
     setErrors(newErrors)
@@ -184,15 +195,13 @@ export function ManualPatientEntry({ initialData, onPatientConfirmed, onCancel }
           {/* Age Field */}
           <Box style={{ flex: 1 }}>
             <Text size="2" weight="medium" mb="1" style={{ color: 'var(--gray-12)' }}>
-              Edad (años)
+              Edad (formato chileno)
             </Text>
             <input
-              type="number"
-              placeholder="45"
+              type="text"
+              placeholder="73a 3m 17d o 73"
               value={age}
               onChange={(e) => setAge(e.target.value)}
-              min="0"
-              max="120"
               style={{
                 width: '100%',
                 padding: 'var(--space-2)',
