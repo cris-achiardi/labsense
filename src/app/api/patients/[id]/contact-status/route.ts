@@ -5,13 +5,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { db } from '@/lib/database'
 
-interface RouteParams {
-  params: {
+interface RouteContext {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const params = await context.params
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
@@ -76,7 +77,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, context: RouteContext) {
+  const params = await context.params
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
