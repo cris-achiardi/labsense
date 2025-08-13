@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { Card, Heading, Text, Button, Badge, Flex, Box, Container, Spinner } from '@radix-ui/themes'
 import { PrioritizedPatient, PatientFilters } from '@/types/database'
 import { db } from '@/lib/database'
+import { PDFViewerButton } from '@/components/healthcare/pdf-viewer-button'
 
 interface PrioritizedPatientListProps {
   limit?: number
@@ -276,7 +277,7 @@ export function PrioritizedPatientList({
                   </Box>
 
                   {/* Action buttons */}
-                  <Flex gap="2" style={{ marginTop: 'auto' }}>
+                  <Flex gap="2" style={{ marginTop: 'auto' }} wrap="wrap">
                     <Button 
                       color="mint" 
                       variant="solid" 
@@ -286,6 +287,15 @@ export function PrioritizedPatientList({
                     >
                       Ver Detalles
                     </Button>
+                    
+                    {patient.pdf_file_path && patient.lab_report_id && (
+                      <PDFViewerButton
+                        pdfUrl={patient.pdf_file_path}
+                        patientRut={patient.rut}
+                        labReportId={patient.lab_report_id}
+                        patientName={patient.name}
+                      />
+                    )}
                     
                     {patient.contact_status === 'pending' && (
                       <Button 

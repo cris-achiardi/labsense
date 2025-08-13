@@ -55,11 +55,11 @@ export function PatientSearchFilters({
       filters.searchQuery = searchQuery.trim()
     }
 
-    if (priorityLevel) {
+    if (priorityLevel && priorityLevel !== 'all') {
       filters.priorityLevel = priorityLevel
     }
 
-    if (contactStatus) {
+    if (contactStatus && contactStatus !== 'all') {
       filters.contactStatus = contactStatus
     }
 
@@ -95,7 +95,9 @@ export function PatientSearchFilters({
     )
   }
 
-  const hasActiveFilters = searchQuery || priorityLevel || contactStatus || 
+  const hasActiveFilters = searchQuery || 
+                          (priorityLevel && priorityLevel !== 'all') || 
+                          (contactStatus && contactStatus !== 'all') || 
                           dateRange.start || dateRange.end || markerTypes.length > 0
 
   return (
@@ -181,7 +183,7 @@ export function PatientSearchFilters({
             >
               <Select.Trigger placeholder="Todas" />
               <Select.Content>
-                <Select.Item value="">Todas las prioridades</Select.Item>
+                <Select.Item value="all">Todas las prioridades</Select.Item>
                 <Select.Item value="HIGH">
                   <Flex align="center" gap="2">
                     <Badge color="red" variant="solid" size="1">ALTA</Badge>
@@ -215,7 +217,7 @@ export function PatientSearchFilters({
             >
               <Select.Trigger placeholder="Todos" />
               <Select.Content>
-                <Select.Item value="">Todos los estados</Select.Item>
+                <Select.Item value="all">Todos los estados</Select.Item>
                 <Select.Item value="pending">
                   <Flex align="center" gap="2">
                     <Badge color="yellow" variant="soft" size="1">PENDIENTE</Badge>

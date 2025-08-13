@@ -100,6 +100,8 @@ export interface PrioritizedPatient {
   abnormal_count: number
   abnormal_markers?: string
   priority_level: 'HIGH' | 'MEDIUM' | 'LOW'
+  lab_report_id?: string
+  pdf_file_path?: string
 }
 
 // Spanish health marker types for Chilean healthcare

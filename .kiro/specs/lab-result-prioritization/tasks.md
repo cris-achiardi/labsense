@@ -112,9 +112,9 @@
 ## Phase 5: Healthcare Features
 
 ### Task 11: PDF Viewing (Requirement 12)
-- [ ] Create "View Original PDF" functionality
-- [ ] Implement PDF opening in new browser tab
-- [ ] Add PDF access logging to audit trail
+- [x] Create "View Original PDF" functionality
+- [x] Implement PDF opening in new browser tab
+- [x] Add PDF access logging to audit trail
 
 ### Task 12: Compliance & Security (Requirements 8, 9, 11)
 - [ ] Implement comprehensive audit logging
