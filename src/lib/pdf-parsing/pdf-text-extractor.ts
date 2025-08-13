@@ -25,8 +25,23 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     // Dynamic import to avoid build issues
     const pdfParse = (await import('pdf-parse')).default
 
-    // Parse PDF with options optimized for Chilean lab reports
-    const pdfData = await pdfParse(pdfBuffer)
+    // Parse PDF with error handling for debug mode issues
+    let pdfData
+    try {
+      pdfData = await pdfParse(pdfBuffer)
+    } catch (parseError: any) {
+      // Handle pdf-parse debug mode errors in production
+      if (parseError.code === 'ENOENT' && parseError.path?.includes('test/data')) {
+        // This is the debug mode error - pdf-parse is trying to access a test file
+        // The actual PDF parsing should still work, so we'll suppress this error
+        console.warn('pdf-parse debug mode error suppressed:', parseError.message)
+        // Try parsing again - the debug code usually runs only once
+        pdfData = await pdfParse(pdfBuffer)
+      } else {
+        // This is a real parsing error, re-throw it
+        throw parseError
+      }
+    }
 
     const fullText = pdfData.text
 
