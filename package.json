@@ -30,7 +30,7 @@
     "next": "^15.4.6",
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.4",
-    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.4.54",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2"
