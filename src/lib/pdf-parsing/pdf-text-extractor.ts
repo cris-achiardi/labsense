@@ -24,7 +24,7 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
   try {
     // Use pdf2json as alternative - it's more reliable in serverless environments
     let pdfData: any
-    
+
     try {
       // Try pdf-parse first but with error handling
       const pdfParse = (await import('pdf-parse')).default
