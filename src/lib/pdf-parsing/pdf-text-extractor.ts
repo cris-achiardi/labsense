@@ -4,6 +4,18 @@
  * Optimized for Vercel serverless deployment using pdfjs-dist directly
  */
 
+// Define polyfills BEFORE any PDF.js imports (must be at module level)
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  (globalThis as any).DOMMatrix = class {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    constructor() {}
+    static fromMatrix() { return new (globalThis as any).DOMMatrix(); }
+    translate() { return this; }
+    scale() { return this; }
+    rotate() { return this; }
+  };
+}
+
 export interface PDFExtractionResult {
   success: boolean
   fullText: string
@@ -29,18 +41,6 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
 
     // Disable worker for serverless environment
     pdfjsLib.GlobalWorkerOptions.workerSrc = ''
-    
-    // Minimal polyfills for serverless environment (only if needed)
-    if (typeof globalThis.DOMMatrix === 'undefined') {
-      (globalThis as any).DOMMatrix = class {
-        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-        constructor() {}
-        static fromMatrix() { return new (globalThis as any).DOMMatrix(); }
-        translate() { return this; }
-        scale() { return this; }
-        rotate() { return this; }
-      };
-    }
 
     // Load PDF document with Node.js-optimized settings
     const loadingTask = pdfjsLib.getDocument({
