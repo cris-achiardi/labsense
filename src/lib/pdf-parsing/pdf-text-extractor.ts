@@ -27,11 +27,8 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     // Dynamic import to reduce bundle size and avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Configure worker for serverless environment
-    if (typeof window === 'undefined') {
-      // Server-side: disable worker to avoid Node.js compatibility issues
-      pdfjsLib.GlobalWorkerOptions.workerSrc = null
-    }
+    // Configure worker for serverless compatibility
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.mjs'
 
     // Load PDF document from buffer
     const loadingTask = pdfjsLib.getDocument({
