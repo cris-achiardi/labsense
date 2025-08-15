@@ -81,8 +81,8 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
         const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath
       } catch (e) {
-        // If worker can't be resolved, disable it
-        pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+        // If worker can't be resolved, use a minimal inline worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:application/javascript;base64,Ly8gTWluaW1hbCBQREYuanMgd29ya2VyIGZvciBzZXJ2ZXJsZXNzCnNlbGYub25tZXNzYWdlID0gZnVuY3Rpb24oZSkgewogIC8vIE1pbmltYWwgd29ya2VyIGltcGxlbWVudGF0aW9uCiAgc2VsZi5wb3N0TWVzc2FnZSh7IGFjdGlvbjogJ3JlYWR5JyB9KTsKfTs='
       }
     }
 
