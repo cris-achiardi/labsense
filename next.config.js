@@ -3,10 +3,12 @@ const nextConfig = {
   // Optimize for Vercel serverless deployment
   serverExternalPackages: ['pdfjs-dist'],
   
+
+  
   // Webpack configuration for PDF.js optimization
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Server-side optimizations for PDF.js
+      // Server-side optimizations for PDF.js ESM handling
       config.resolve.alias = {
         ...config.resolve.alias,
         // Use legacy build for better Node.js compatibility
@@ -16,6 +18,13 @@ const nextConfig = {
       // Exclude canvas from server bundle (not needed for text extraction)
       config.externals = config.externals || []
       config.externals.push('canvas')
+      
+      // Handle ESM modules properly
+      config.module.rules.push({
+        test: /\.mjs$/,
+        include: /node_modules/,
+        type: 'javascript/auto'
+      })
     }
     
     return config

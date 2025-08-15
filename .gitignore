@@ -197,3 +197,9 @@ lab-samples/
 
 # Supabase
 .supabase/
+
+# Compiled TypeScript files (should not be committed)
+*.js
+!next.config.js
+!jest.config.js
+!tailwind.config.js
