@@ -48,9 +48,6 @@ if (typeof globalThis.ImageData === 'undefined') {
   };
 }
 
-// Import pdfjs-dist
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-
 export interface PDFExtractionResult {
   success: boolean
   fullText: string
@@ -67,19 +64,15 @@ export interface PDFExtractionResult {
 
 /**
  * Extracts and processes text from Chilean lab report PDFs using pdfjs-dist
- * IMPORTANT: Esta versión desactiva el worker completamente para funcionar en Vercel
+ * Uses dynamic imports and CDN worker for Vercel serverless compatibility
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // SOLUCIÓN CLAVE: Usar worker válido para evitar errores
-    // Intentar resolver el worker local, si no funciona usar data URL
-    try {
-      const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath
-    } catch (e) {
-      // Fallback: usar data URL con worker mínimo
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:application/javascript;base64,Ly8gTWluaW1hbCBQREYuanMgd29ya2VyIGZvciBzZXJ2ZXJsZXNzCnNlbGYub25tZXNzYWdlID0gZnVuY3Rpb24oZSkgewogIC8vIE1pbmltYWwgd29ya2VyIGltcGxlbWVudGF0aW9uCiAgc2VsZi5wb3N0TWVzc2FnZSh7IGFjdGlvbjogJ3JlYWR5JyB9KTsKfTs='
-    }
+    // Dynamic import for better serverless compatibility
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+
+    // Configure worker using CDN for reliability
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
 
     // Load PDF document with serverless-optimized settings
     const loadingTask = pdfjsLib.getDocument({
