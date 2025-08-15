@@ -1,10 +1,10 @@
 /**
  * Chilean Lab Report PDF Text Extraction
  * Specialized for Chilean medical laboratory PDFs with Spanish terminology
- * Optimized for Vercel serverless deployment using pdfjs-dist directly
+ * Optimized for Vercel serverless deployment with comprehensive polyfills
  */
 
-// Define polyfills BEFORE any PDF.js imports (must be at module level)
+// Comprehensive polyfills for serverless environment (must be at module level)
 if (typeof globalThis.DOMMatrix === 'undefined') {
   (globalThis as any).DOMMatrix = class {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
@@ -13,6 +13,38 @@ if (typeof globalThis.DOMMatrix === 'undefined') {
     translate() { return this; }
     scale() { return this; }
     rotate() { return this; }
+  };
+}
+
+if (typeof globalThis.Path2D === 'undefined') {
+  (globalThis as any).Path2D = class {
+    constructor() {}
+    moveTo() { return this; }
+    lineTo() { return this; }
+    closePath() { return this; }
+  };
+}
+
+if (typeof globalThis.CanvasGradient === 'undefined') {
+  (globalThis as any).CanvasGradient = class {
+    addColorStop() { return this; }
+  };
+}
+
+if (typeof globalThis.CanvasPattern === 'undefined') {
+  (globalThis as any).CanvasPattern = class {};
+}
+
+if (typeof globalThis.ImageData === 'undefined') {
+  (globalThis as any).ImageData = class {
+    constructor(width: number, height: number) {
+      this.width = width;
+      this.height = height;
+      this.data = new Uint8ClampedArray(width * height * 4);
+    }
+    width: number;
+    height: number;
+    data: Uint8ClampedArray;
   };
 }
 
@@ -32,17 +64,17 @@ export interface PDFExtractionResult {
 
 /**
  * Extracts and processes text from Chilean lab report PDFs using pdfjs-dist
- * Optimized for Vercel serverless environments with minimal bundle size
+ * Optimized for Vercel serverless environments with comprehensive polyfills
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // Use legacy build with proper serverless configuration
+    // Use legacy build with comprehensive serverless polyfills
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Disable worker for serverless environment
+    // Disable worker completely for serverless environment
     pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
-    // Load PDF document with Node.js-optimized settings
+    // Load PDF document with serverless-optimized settings
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
       // Serverless optimizations
@@ -111,37 +143,6 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
       error: error instanceof Error ? error.message : 'Error desconocido al extraer texto del PDF'
     }
   }
-}
-
-/**
- * Splits PDF text into individual pages
- */
-function splitTextIntoPages(text: string): string[] {
-  // Common page separators in PDF text extraction
-  const pageSeparators = [
-    /\f/g,                    // Form feed character
-    /\n\s*\n\s*\n\s*\n/g,    // Multiple newlines
-    /Página\s+\d+/gi,        // "Página X" indicators
-    /Page\s+\d+/gi,          // "Page X" indicators
-    /\n\s*-\s*\d+\s*-\s*\n/g // Page numbers like "- 1 -"
-  ]
-
-  let pages = [text]
-
-  // Try each separator to split pages
-  for (const separator of pageSeparators) {
-    const newPages: string[] = []
-    for (const page of pages) {
-      const splits = page.split(separator)
-      newPages.push(...splits.filter(split => split.trim().length > 50)) // Ignore very short splits
-    }
-    if (newPages.length > pages.length) {
-      pages = newPages
-      break // Use the first separator that successfully splits pages
-    }
-  }
-
-  return pages.filter(page => page.trim().length > 0)
 }
 
 /**
