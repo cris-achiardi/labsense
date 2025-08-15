@@ -71,8 +71,20 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     // Use legacy build with comprehensive serverless polyfills
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Configure worker for serverless environment
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+    // Configure worker for different environments
+    if (typeof window !== 'undefined') {
+      // Browser environment - use CDN worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+    } else {
+      // Node.js/serverless environment - try to resolve worker path
+      try {
+        const workerPath = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath
+      } catch (e) {
+        // If worker can't be resolved, disable it
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+      }
+    }
 
     // Load PDF document with serverless-optimized settings
     const loadingTask = pdfjsLib.getDocument({
