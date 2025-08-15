@@ -72,10 +72,8 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     const pdfParse = (await import('pdf-parse')).default
     
     // Extract text using pdf-parse (no worker needed)
-    const data = await pdfParse(pdfBuffer, {
-      // Optimize for text extraction only
-      max: 10 // Maximum pages to parse
-    })
+    // Use minimal configuration to avoid test file dependencies
+    const data = await pdfParse(pdfBuffer)
 
     const fullText = data.text || ''
     const pages = fullText.split('\f').filter((page: string) => page.trim().length > 0) // Split by form feed
