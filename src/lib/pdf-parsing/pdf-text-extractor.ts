@@ -27,8 +27,28 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     // Dynamic import to reduce bundle size and avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Configure worker for serverless compatibility
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/build/pdf.worker.mjs'
+    // Configure for serverless environment - disable worker completely
+    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+    
+    // Polyfill missing browser APIs for serverless environment
+    if (typeof globalThis.DOMMatrix === 'undefined') {
+      (globalThis as any).DOMMatrix = class {
+        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+        constructor() {}
+        static fromMatrix() { return new (globalThis as any).DOMMatrix(); }
+        translate() { return this; }
+        scale() { return this; }
+        rotate() { return this; }
+      };
+    }
+    
+    // Additional polyfills for serverless
+    if (typeof globalThis.Path2D === 'undefined') {
+      (globalThis as any).Path2D = class {};
+    }
+    if (typeof globalThis.CanvasGradient === 'undefined') {
+      (globalThis as any).CanvasGradient = class {};
+    }
 
     // Load PDF document from buffer
     const loadingTask = pdfjsLib.getDocument({
