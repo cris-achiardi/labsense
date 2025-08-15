@@ -1,6 +1,7 @@
 /**
  * Chilean Lab Report PDF Text Extraction
  * Specialized for Chilean medical laboratory PDFs with Spanish terminology
+ * Optimized for Vercel serverless deployment using pdfjs-dist directly
  */
 
 export interface PDFExtractionResult {
@@ -19,43 +20,55 @@ export interface PDFExtractionResult {
 
 /**
  * Extracts and processes text from Chilean lab report PDFs using pdfjs-dist
- * More reliable in serverless environments like Vercel
+ * Optimized for Vercel serverless environments with minimal bundle size
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // Use pdfjs-dist - reliable in serverless environments, no debug issues
-    const pdfjsLib = await import('pdfjs-dist')
-    
-    // Load the PDF document
+    // Dynamic import to reduce bundle size and avoid SSR issues
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+
+    // Configure worker for serverless environment
+    if (typeof window === 'undefined') {
+      // Server-side: disable worker to avoid Node.js compatibility issues
+      pdfjsLib.GlobalWorkerOptions.workerSrc = null
+    }
+
+    // Load PDF document from buffer
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
-      useSystemFonts: true,
+      // Optimize for serverless: disable streaming and caching
+      disableStream: true,
+      disableAutoFetch: true,
+      // Reduce memory usage
+      maxImageSize: 1024 * 1024, // 1MB max per image
+      cMapPacked: true
     })
-    
-    const pdfDocument = await loadingTask.promise
-    const numPages = pdfDocument.numPages
-    
-    // Extract text from all pages
+
+    const pdf = await loadingTask.promise
     const pages: string[] = []
     let fullText = ''
-    
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum)
+
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum)
       const textContent = await page.getTextContent()
-      
-      // Combine text items into readable text
+
+      // Combine text items with proper spacing
       const pageText = textContent.items
-        .map((item: any) => item.str)
+        .map((item: any) => {
+          // Handle text items with positioning
+          if ('str' in item) {
+            return item.str
+          }
+          return ''
+        })
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim()
-      
+
       pages.push(pageText)
       fullText += pageText + '\n'
     }
-    
-    // Clean up resources
-    await pdfDocument.destroy()
 
     // Extract first page (where patient info is typically located)
     const firstPageText = pages[0] || fullText.substring(0, 3000)
@@ -64,16 +77,19 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     const cleanedFullText = cleanChileanLabText(fullText.trim())
     const cleanedFirstPage = cleanChileanLabText(firstPageText)
 
+    // Get metadata
+    const metadata = await pdf.getMetadata()
+
     return {
       success: true,
       fullText: cleanedFullText,
       pages: pages.map(page => cleanChileanLabText(page)),
       firstPageText: cleanedFirstPage,
       metadata: {
-        pageCount: numPages,
-        title: undefined, // pdfjs-dist doesn't provide metadata in the same way
-        author: undefined,
-        creationDate: undefined
+        pageCount: pdf.numPages,
+        title: metadata.info?.Title,
+        author: metadata.info?.Author,
+        creationDate: metadata.info?.CreationDate ? new Date(metadata.info.CreationDate) : undefined
       }
     }
   } catch (error) {

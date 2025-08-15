@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:pdf": "node -r ts-node/register src/lib/pdf-parsing/test-pdf-parser.ts"
   },
   "description": "Intelligent lab result prioritization system for Chilean healthcare",
   "keywords": [
@@ -36,7 +37,6 @@
     "typescript": "^5.9.2"
   },
   "devDependencies": {
-    "@types/pdf-parse": "^1.1.5",
     "eslint": "^9.33.0",
     "prettier": "^3.6.2"
   }

@@ -1,34 +1,40 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    // Temporarily ignore build errors during development
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    // Temporarily ignore ESLint errors during builds
-    ignoreDuringBuilds: false,
-  },
+  // Optimize for Vercel serverless deployment
+  serverExternalPackages: ['pdfjs-dist'],
+  
+  // Webpack configuration for PDF.js optimization
   webpack: (config, { isServer }) => {
-    // Handle pdf-parse library issues
     if (isServer) {
+      // Server-side optimizations for PDF.js
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // Use legacy build for better Node.js compatibility
+        'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs'
+      }
+      
+      // Exclude canvas from server bundle (not needed for text extraction)
       config.externals = config.externals || []
-      config.externals.push({
-        'canvas': 'canvas',
-      })
+      config.externals.push('canvas')
     }
-    
-    // Ignore pdf-parse test files
-    config.resolve.alias = {
-      ...config.resolve.alias,
-    }
-    
-    config.module.rules.push({
-      test: /\.pdf$/,
-      type: 'asset/resource',
-    })
     
     return config
   },
+  
+  // Headers for security
+  async headers() {
+    return [
+      {
+        source: '/api/pdf/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, max-age=0'
+          }
+        ]
+      }
+    ]
+  }
 }
 
 module.exports = nextConfig
