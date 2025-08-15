@@ -24,13 +24,13 @@ export interface PDFExtractionResult {
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // Dynamic import to reduce bundle size and avoid SSR issues
+    // Use legacy build with proper serverless configuration
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Configure for serverless environment - disable worker completely
+    // Disable worker for serverless environment
     pdfjsLib.GlobalWorkerOptions.workerSrc = ''
     
-    // Polyfill missing browser APIs for serverless environment
+    // Minimal polyfills for serverless environment (only if needed)
     if (typeof globalThis.DOMMatrix === 'undefined') {
       (globalThis as any).DOMMatrix = class {
         a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
@@ -41,22 +41,14 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
         rotate() { return this; }
       };
     }
-    
-    // Additional polyfills for serverless
-    if (typeof globalThis.Path2D === 'undefined') {
-      (globalThis as any).Path2D = class {};
-    }
-    if (typeof globalThis.CanvasGradient === 'undefined') {
-      (globalThis as any).CanvasGradient = class {};
-    }
 
-    // Load PDF document from buffer
+    // Load PDF document with Node.js-optimized settings
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
-      // Optimize for serverless: disable streaming and caching
+      // Serverless optimizations
       disableStream: true,
       disableAutoFetch: true,
-      // Reduce memory usage
+      // Memory optimizations
       maxImageSize: 1024 * 1024, // 1MB max per image
       cMapPacked: true
     })
