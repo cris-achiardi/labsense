@@ -8,7 +8,7 @@
 if (typeof globalThis.DOMMatrix === 'undefined') {
   (globalThis as any).DOMMatrix = class {
     a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-    constructor() {}
+    constructor() { }
     static fromMatrix() { return new (globalThis as any).DOMMatrix(); }
     translate() { return this; }
     scale() { return this; }
@@ -18,7 +18,7 @@ if (typeof globalThis.DOMMatrix === 'undefined') {
 
 if (typeof globalThis.Path2D === 'undefined') {
   (globalThis as any).Path2D = class {
-    constructor() {}
+    constructor() { }
     moveTo() { return this; }
     lineTo() { return this; }
     closePath() { return this; }
@@ -32,7 +32,7 @@ if (typeof globalThis.CanvasGradient === 'undefined') {
 }
 
 if (typeof globalThis.CanvasPattern === 'undefined') {
-  (globalThis as any).CanvasPattern = class {};
+  (globalThis as any).CanvasPattern = class { };
 }
 
 if (typeof globalThis.ImageData === 'undefined') {
@@ -71,8 +71,8 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
     // Use legacy build with comprehensive serverless polyfills
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Disable worker completely for serverless environment
-    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+    // Configure worker for serverless environment
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
 
     // Load PDF document with serverless-optimized settings
     const loadingTask = pdfjsLib.getDocument({
@@ -128,9 +128,9 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
       firstPageText: cleanedFirstPage,
       metadata: {
         pageCount: pdf.numPages,
-        title: metadata.info?.Title,
-        author: metadata.info?.Author,
-        creationDate: metadata.info?.CreationDate ? new Date(metadata.info.CreationDate) : undefined
+        title: (metadata.info as any)?.Title,
+        author: (metadata.info as any)?.Author,
+        creationDate: (metadata.info as any)?.CreationDate ? new Date((metadata.info as any).CreationDate) : undefined
       }
     }
   } catch (error) {
