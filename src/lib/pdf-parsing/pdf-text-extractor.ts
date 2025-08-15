@@ -64,23 +64,23 @@ export interface PDFExtractionResult {
 
 /**
  * Extracts and processes text from Chilean lab report PDFs using pdfjs-dist
- * Uses dynamic imports and CDN worker for Vercel serverless compatibility
+ * Optimized for Vercel serverless with disabled worker for reliability
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // Dynamic import for better serverless compatibility
+    // Dynamic import for serverless compatibility
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-    // Configure worker using CDN for reliability
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+    // DISABLE worker for serverless reliability - process in main thread
+    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
     // Load PDF document with serverless-optimized settings
     const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
-      // Optimizaciones para serverless
+      // Serverless optimizations
       disableStream: true,
       disableAutoFetch: true,
-      // Optimizaciones de memoria
+      // Memory optimizations
       maxImageSize: 1024 * 1024, // 1MB max per image
       cMapPacked: true
     });

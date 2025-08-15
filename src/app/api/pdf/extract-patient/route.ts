@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { extractPatientFromPDF } from '@/lib/pdf-parsing/patient-extraction'
 
+// Use Node.js runtime for NextAuth compatibility
+export const runtime = 'nodejs'
 // Force dynamic rendering to avoid caching issues
 export const dynamic = 'force-dynamic'
 
