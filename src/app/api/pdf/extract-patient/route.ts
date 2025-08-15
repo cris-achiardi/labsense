@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { extractPatientFromPDF } from '@/lib/pdf-parsing/patient-extraction'
 
+// Force dynamic rendering to avoid caching issues
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -60,4 +63,13 @@ export async function POST(request: NextRequest) {
       error: 'Error interno del servidor' 
     }, { status: 500 })
   }
+}
+
+// Add a GET handler for debugging
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'PDF Patient Extraction API', 
+    method: 'POST',
+    status: 'available' 
+  })
 }
