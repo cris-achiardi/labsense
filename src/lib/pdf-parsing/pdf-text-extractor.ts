@@ -63,109 +63,57 @@ export interface PDFExtractionResult {
 }
 
 /**
- * Extracts and processes text from Chilean lab report PDFs using pdfjs-dist
- * Optimized for Vercel serverless with disabled worker for reliability
+ * Extracts and processes text from Chilean lab report PDFs using pdf-parse
+ * Optimized for Vercel serverless - no worker dependencies
  */
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtractionResult> {
   try {
-    // Dynamic import for serverless compatibility
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    // Use pdf-parse for better serverless compatibility
+    const pdfParse = (await import('pdf-parse')).default
+    
+    // Extract text using pdf-parse (no worker needed)
+    const data = await pdfParse(pdfBuffer, {
+      // Optimize for text extraction only
+      max: 10 // Maximum pages to parse
+    })
 
-    // DISABLE worker for serverless reliability - process in main thread
-    pdfjsLib.GlobalWorkerOptions.workerSrc = ''
-
-    // Load PDF document with serverless-optimized settings
-    const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(pdfBuffer),
-      // Serverless optimizations
-      disableStream: true,
-      disableAutoFetch: true,
-      // Memory optimizations
-      maxImageSize: 1024 * 1024, // 1MB max per image
-      cMapPacked: true
-    });
-
-    const pdf = await loadingTask.promise;
-    const pages: string[] = [];
-    let fullText = '';
-
-    // Extract text from each page
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      try {
-        const page = await pdf.getPage(pageNum);
-        const textContent = await page.getTextContent();
-
-        // Combine text items with proper spacing
-        const pageText = textContent.items
-          .map((item: any) => {
-            // Handle text items with positioning
-            if ('str' in item) {
-              return item.str;
-            }
-            return '';
-          })
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        pages.push(pageText);
-        fullText += pageText + '\n';
-
-        // Note: page.cleanup() doesn't exist in this PDF.js version
-      } catch (pageError) {
-        console.error(`Error extracting page ${pageNum}:`, pageError);
-        // Continuar con las demás páginas si una falla
-        pages.push('');
-      }
-    }
-
-    // Extract first page (where patient info is typically located)
-    const firstPageText = pages[0] || fullText.substring(0, 3000);
+    const fullText = data.text || ''
+    const pages = fullText.split('\f').filter((page: string) => page.trim().length > 0) // Split by form feed
+    const firstPageText = pages[0] || fullText.substring(0, 3000)
 
     // Clean and normalize text for better parsing
-    const cleanedFullText = cleanChileanLabText(fullText.trim());
-    const cleanedFirstPage = cleanChileanLabText(firstPageText);
+    const cleanedFullText = cleanChileanLabText(fullText.trim())
+    const cleanedFirstPage = cleanChileanLabText(firstPageText)
+    const cleanedPages = pages.map((page: string) => cleanChileanLabText(page))
 
-    // Get metadata safely
-    let metadata: any = {
-      pageCount: pdf.numPages
-    };
-
-    try {
-      const pdfMetadata = await pdf.getMetadata();
-      if (pdfMetadata?.info) {
-        metadata.title = (pdfMetadata.info as any)?.Title;
-        metadata.author = (pdfMetadata.info as any)?.Author;
-        metadata.creationDate = (pdfMetadata.info as any)?.CreationDate
-          ? new Date((pdfMetadata.info as any).CreationDate)
-          : undefined;
-      }
-    } catch (metadataError) {
-      console.warn('Could not extract PDF metadata:', metadataError);
+    // Basic metadata from pdf-parse
+    const metadata = {
+      pageCount: data.numpages || pages.length,
+      title: data.info?.Title,
+      author: data.info?.Author,
+      creationDate: data.info?.CreationDate ? new Date(data.info.CreationDate) : undefined
     }
-
-    // Note: pdf.destroy() doesn't exist in this PDF.js version
 
     return {
       success: true,
       fullText: cleanedFullText,
-      pages: pages.map(page => cleanChileanLabText(page)),
+      pages: cleanedPages,
       firstPageText: cleanedFirstPage,
       metadata
-    };
+    }
   } catch (error) {
-    console.error('PDF text extraction error:', error);
+    console.error('PDF text extraction error:', error)
 
-    // Mensaje de error más específico
-    let errorMessage = 'Error desconocido al extraer texto del PDF';
+    // More specific error message
+    let errorMessage = 'Error desconocido al extraer texto del PDF'
     if (error instanceof Error) {
-      errorMessage = error.message;
+      errorMessage = error.message
 
-      // Agregar información adicional para debugging
-      if (error.message.includes('worker')) {
-        errorMessage = 'Error de worker en Vercel. Contacte soporte si persiste.';
-      } else if (error.message.includes('Invalid PDF')) {
-        errorMessage = 'El archivo PDF parece estar corrupto o no es válido.';
+      // Add specific debugging info
+      if (error.message.includes('Invalid PDF')) {
+        errorMessage = 'El archivo PDF parece estar corrupto o no es válido.'
+      } else if (error.message.includes('password')) {
+        errorMessage = 'El PDF está protegido con contraseña.'
       }
     }
 
@@ -175,7 +123,7 @@ export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<PDFExtracti
       pages: [],
       firstPageText: '',
       error: errorMessage
-    };
+    }
   }
 }
 
