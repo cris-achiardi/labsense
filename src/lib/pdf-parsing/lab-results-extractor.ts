@@ -223,9 +223,21 @@ function extractLabResults(text: string): LabResult[] {
     }
   }
   
+  // Also try the original line-by-line approach as fallback
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line || line.length < 10) continue // Skip very short lines
+    
+    // Skip lines that are clearly not lab results
+    if (line.includes('Fecha de Recepción') || 
+        line.includes('Tipo de Muestra') ||
+        line.includes('Examen procesado') ||
+        line.includes('Método Analítico') ||
+        line.includes('RUT :') ||
+        line.includes('Folio :') ||
+        line.includes('LABORATORIO CLÍNICO')) {
+      continue
+    }
     
     // Look for health marker names in the line
     const upperLine = line.toUpperCase()
@@ -245,6 +257,13 @@ function extractLabResults(text: string): LabResult[] {
     }
     
     if (foundMarker) {
+      // Check if we already extracted this marker
+      const alreadyExtracted = results.some(r => r.systemCode === foundMarker!.systemCode)
+      if (alreadyExtracted) {
+        console.log(`⚠️ Already extracted ${foundMarker.systemCode}, skipping`)
+        continue
+      }
+      
       // Try to extract the complete lab result from this line and surrounding context
       const labResult = parseLabResultLineImproved(line, foundMarker, i, lines)
       if (labResult) {
@@ -322,16 +341,19 @@ function parseLabResultFromSectionLine(
   
   if (!foundMarker) return null
   
-  // Try to extract the result using specific patterns for this PDF format
-  // Pattern: GLICEMIA EN AYUNO (BASAL)269(mg/dL)[*] 74-106 Hexoquinasa
-  const compactMatch = line.match(/^(.+?)(\d+(?:\.\d+)?)\(([^)]+)\)(.+?)(?:\s+([A-Za-z].+))?$/)
+  // Try multiple patterns for this specific Chilean PDF format
+  console.log(`🔍 Trying to parse: "${line}"`)
   
-  if (compactMatch) {
-    const [, examen, resultado, unidad, valorReferencia, metodo = ''] = compactMatch
+  // Pattern 1: GLICEMIA EN AYUNO (BASAL)269(mg/dL)[*] 74-106 Hexoquinasa
+  const pattern1 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.+?)(?:\s+([A-Za-z].+))?$/)
+  
+  if (pattern1) {
+    console.log(`✅ Pattern 1 matched:`, pattern1)
+    const [, examen, resultado, unidad, valorReferencia, metodo = ''] = pattern1
     
     return createLabResultFromMatch(
       examen.trim(),
-      resultado.trim(),
+      resultado.replace(',', '.'), // Handle Chilean decimal format
       unidad.trim(),
       valorReferencia.trim(),
       metodo.trim(),
@@ -341,23 +363,61 @@ function parseLabResultFromSectionLine(
     )
   }
   
-  // Pattern: TRIGLICERIDOS136(mg/dL)Normal: < 150Enzimático, Punto Final
-  const normalMatch = line.match(/^(.+?)(\d+(?:\.\d+)?)\(([^)]+)\)(.+)$/)
+  // Pattern 2: Handle cases where method comes before reference
+  const pattern2 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(.+)$/)
   
-  if (normalMatch) {
-    const [, examen, resultado, unidad, rest] = normalMatch
+  if (pattern2) {
+    console.log(`✅ Pattern 2 matched:`, pattern2)
+    const [, examen, resultado, unidad, rest] = pattern2
     
-    // Split the rest to get reference and method
-    const parts = rest.split(/(?=[A-Z][a-z])/) // Split before capital letters
-    const valorReferencia = parts[0] || rest
-    const metodo = parts.slice(1).join(' ') || ''
+    // Try to separate reference from method
+    let valorReferencia = rest
+    let metodo = ''
+    
+    // Look for method indicators
+    const methodSeparators = ['Hexoquinasa', 'Enzimático', 'Quimioluminiscencia', 'Oxidación', 'I.F.C.C', 'Ureasa', 'Uricasa', 'Verde', 'Jaffé', 'Cromatografía', 'Aglutinación', 'Cálculo', 'Colorimetria', 'Microscopía']
+    
+    for (const separator of methodSeparators) {
+      if (rest.includes(separator)) {
+        const parts = rest.split(separator)
+        valorReferencia = parts[0].trim()
+        metodo = separator + (parts[1] || '')
+        break
+      }
+    }
     
     return createLabResultFromMatch(
       examen.trim(),
-      resultado.trim(),
+      resultado.replace(',', '.'),
       unidad.trim(),
       valorReferencia.trim(),
       metodo.trim(),
+      foundMarker,
+      lineIndex,
+      line
+    )
+  }
+  
+  // Pattern 3: Very simple pattern for edge cases
+  const pattern3 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)(.+)$/)
+  
+  if (pattern3) {
+    console.log(`✅ Pattern 3 matched:`, pattern3)
+    const [, examen, resultado, rest] = pattern3
+    
+    // Extract unit from parentheses
+    const unitMatch = rest.match(/\(([^)]+)\)/)
+    const unidad = unitMatch ? unitMatch[1] : ''
+    
+    // Everything after unit is reference + method
+    const afterUnit = rest.replace(/\([^)]+\)/, '').trim()
+    
+    return createLabResultFromMatch(
+      examen.trim(),
+      resultado.replace(',', '.'),
+      unidad,
+      afterUnit,
+      '',
       foundMarker,
       lineIndex,
       line
