@@ -204,11 +204,24 @@ function extractLabResults(text: string): LabResult[] {
   
   // Debug: Log some lines to understand the format
   console.log('🔍 Analyzing PDF text structure:')
-  lines.slice(0, 20).forEach((line, i) => {
-    if (line.trim().length > 10) {
-      console.log(`Line ${i}: "${line}"`)
+  
+  // Look for the specific patterns in the PDF
+  const testSections = text.split('___________________________________________________________________________________________________________________________________')
+  console.log(`📊 Found ${testSections.length} test sections`)
+  
+  // Process each section that contains lab results
+  for (let sectionIndex = 0; sectionIndex < testSections.length; sectionIndex++) {
+    const section = testSections[sectionIndex]
+    if (section.includes('ExamenResultadoUnidadValor de ReferenciaMétodo') || 
+        section.includes('Examen') && section.includes('Resultado') && section.includes('Unidad')) {
+      console.log(`🧪 Processing lab section ${sectionIndex}:`)
+      console.log(section.substring(0, 500) + '...')
+      
+      // Extract lab results from this section
+      const sectionResults = extractLabResultsFromSection(section, healthMarkerLookup)
+      results.push(...sectionResults)
     }
-  })
+  }
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
@@ -245,6 +258,113 @@ function extractLabResults(text: string): LabResult[] {
   
   console.log(`🎯 Total lab results extracted: ${results.length}`)
   return results
+}
+
+/**
+ * Extract lab results from a specific section of the PDF
+ */
+function extractLabResultsFromSection(section: string, healthMarkerLookup: Map<string, HealthMarkerMapping>): LabResult[] {
+  const sectionResults: LabResult[] = []
+  
+  // Look for the table header to find where results start
+  const tableHeaderIndex = section.indexOf('ExamenResultadoUnidadValor de ReferenciaMétodo')
+  if (tableHeaderIndex === -1) return sectionResults
+  
+  // Get the text after the table header
+  const resultsText = section.substring(tableHeaderIndex + 'ExamenResultadoUnidadValor de ReferenciaMétodo'.length)
+  
+  // Split into lines and look for lab results
+  const lines = resultsText.split('\n')
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line || line.length < 10) continue
+    
+    // Skip non-result lines
+    if (line.includes('Fecha de Recepción') || 
+        line.includes('Tipo de Muestra') ||
+        line.includes('Examen procesado') ||
+        line.includes('Método Analítico')) {
+      continue
+    }
+    
+    // Try to parse this line as a lab result
+    const labResult = parseLabResultFromSectionLine(line, healthMarkerLookup, i)
+    if (labResult) {
+      console.log(`✅ Extracted from section: ${labResult.examen} = ${labResult.resultado}`)
+      sectionResults.push(labResult)
+    }
+  }
+  
+  return sectionResults
+}
+
+/**
+ * Parse a lab result from a section line
+ */
+function parseLabResultFromSectionLine(
+  line: string, 
+  healthMarkerLookup: Map<string, HealthMarkerMapping>, 
+  lineIndex: number
+): LabResult | null {
+  
+  // Look for health markers in this line
+  const upperLine = line.toUpperCase()
+  let foundMarker: HealthMarkerMapping | null = null
+  
+  const markerEntries = Array.from(healthMarkerLookup.entries())
+  for (const [searchTerm, marker] of markerEntries) {
+    if (upperLine.includes(searchTerm)) {
+      foundMarker = marker
+      break
+    }
+  }
+  
+  if (!foundMarker) return null
+  
+  // Try to extract the result using specific patterns for this PDF format
+  // Pattern: GLICEMIA EN AYUNO (BASAL)269(mg/dL)[*] 74-106 Hexoquinasa
+  const compactMatch = line.match(/^(.+?)(\d+(?:\.\d+)?)\(([^)]+)\)(.+?)(?:\s+([A-Za-z].+))?$/)
+  
+  if (compactMatch) {
+    const [, examen, resultado, unidad, valorReferencia, metodo = ''] = compactMatch
+    
+    return createLabResultFromMatch(
+      examen.trim(),
+      resultado.trim(),
+      unidad.trim(),
+      valorReferencia.trim(),
+      metodo.trim(),
+      foundMarker,
+      lineIndex,
+      line
+    )
+  }
+  
+  // Pattern: TRIGLICERIDOS136(mg/dL)Normal: < 150Enzimático, Punto Final
+  const normalMatch = line.match(/^(.+?)(\d+(?:\.\d+)?)\(([^)]+)\)(.+)$/)
+  
+  if (normalMatch) {
+    const [, examen, resultado, unidad, rest] = normalMatch
+    
+    // Split the rest to get reference and method
+    const parts = rest.split(/(?=[A-Z][a-z])/) // Split before capital letters
+    const valorReferencia = parts[0] || rest
+    const metodo = parts.slice(1).join(' ') || ''
+    
+    return createLabResultFromMatch(
+      examen.trim(),
+      resultado.trim(),
+      unidad.trim(),
+      valorReferencia.trim(),
+      metodo.trim(),
+      foundMarker,
+      lineIndex,
+      line
+    )
+  }
+  
+  return null
 }
 
 /**
