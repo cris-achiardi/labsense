@@ -746,7 +746,8 @@ function extractLabNamesAndResults(
   ]
   
   // Extract using all patterns
-  for (const [patternIndex, pattern] of labNameResultPatterns.entries()) {
+  for (let patternIndex = 0; patternIndex < labNameResultPatterns.length; patternIndex++) {
+    const pattern = labNameResultPatterns[patternIndex]
     let match
     while ((match = pattern.exec(text)) !== null) {
       const [fullMatch, examen, resultado] = match
@@ -813,7 +814,7 @@ function createSimplifiedLabResult(
   examen: string,
   resultado: string,
   healthMarkerLookup: Map<string, HealthMarkerMapping>,
-  patternIndex: number,
+  _patternIndex: number,
   context: string,
   position: number
 ): ComprehensiveLabResult | null {
