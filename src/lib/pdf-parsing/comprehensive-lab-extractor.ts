@@ -299,7 +299,7 @@ const CHILEAN_LAB_FORMATS: Record<string, ChileanLabFormat> = {
     method: 'Quimioluminiscencia',
     normalRange: '211-911',
     type: 'numeric',
-    category: 'vitamins',
+    category: 'other',
     priority: 'low'
   },
   
@@ -726,16 +726,16 @@ function extractLabNamesAndResults(
     // Patterns to find EXACT lab name followed by result
     const exactPatterns = [
       // Pattern 1: Exact lab name with space and number: GLICEMIA EN AYUNO (BASAL) 269
-      new RegExp(`(${escapedLabName})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
+      new RegExp(`\\b(${escapedLabName})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
       
       // Pattern 2: Exact lab name connected to number: GLICEMIA EN AYUNO (BASAL)269
-      new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
+      new RegExp(`\\b(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
       
       // Pattern 3: Exact lab name with unit in parentheses: HEMOGLOBINA14,2(g/dL)
-      new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\([^)]+\\)`, 'g'),
+      new RegExp(`\\b(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\([^)]+\\)`, 'g'),
       
       // Pattern 4: Qualitative results for exact lab names
-      new RegExp(`(${escapedLabName})\\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`, 'g')
+      new RegExp(`\\b(${escapedLabName})\\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`, 'g')
     ]
     
     // Try each pattern for this exact lab name
@@ -839,7 +839,7 @@ function createExactLabResult(
     unidad: format.unit,
     valorReferencia: format.normalRange,
     metodo: format.method,
-    tipoMuestra: 'SUERO', // Default, will be updated by sample type detection
+    tipoMuestra: detectSampleTypeForResult(examen, context), // Improved sample type detection
     isAbnormal: false, // Will be determined later by abnormal detection
     abnormalIndicator: '',
     systemCode,
@@ -954,6 +954,152 @@ function getExactSystemCode(labName: string): string | null {
 }
 
 /**
+ * Dedicated parser for LIPID PROFILE section
+ * Handles the complex multi-line format with embedded results
+ */
+function parseLipidProfile(text: string, healthMarkerLookup: Map<string, HealthMarkerMapping>): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  // Look for lipid profile section
+  const lipidSectionMatch = text.match(/TRIGLICERIDOS[\s\S]*?(?=(?:HEMOGRAMA|ELECTROLITOS|FUNCION|$))/i)
+  if (!lipidSectionMatch) return results
+  
+  const lipidSection = lipidSectionMatch[0]
+  console.log('🔬 Parsing LIPID PROFILE section')
+  
+  // Define expected lipid labs in order
+  const lipidLabs = [
+    'TRIGLICERIDOS',
+    'COLESTEROL TOTAL', 
+    'COLESTEROL HDL',
+    'COLESTEROL LDL (CALCULO)',
+    'COLESTEROL VLDL (CALCULO)',
+    'CALCULO TOTAL/HDL'
+  ]
+  
+  for (const labName of lipidLabs) {
+    // Skip if already extracted
+    if (isAlreadyExtracted(results, labName)) continue
+    
+    // Constrained pattern for this specific lab - stops at next lab or end
+    const escapedLabName = labName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\(([^)]+)\\)([^A-ZÁÉÍÓÚÑ]*?)(?=COLESTEROL|CALCULO|$)`, 'g')
+    
+    const match = pattern.exec(lipidSection)
+    if (match) {
+      const [, examen, resultado, unidad, rangeData] = match
+      
+      // Extract clean reference range - stop at method or next lab
+      let cleanRange = rangeData
+        .replace(/Normal:?\s*/g, '')
+        .replace(/Bajo.*?(?=:|$)/g, '')
+        .replace(/Moderado.*?(?=:|$)/g, '')
+        .replace(/Alto.*?(?=:|$)/g, '')
+        .replace(/Muy alto.*?(?=:|$)/g, '')
+        .replace(/Enzimático.*$/g, '')
+        .replace(/Medición Directa.*$/g, '')
+        .replace(/Cálculo.*$/g, '')
+        .trim()
+      
+      // Clean range to just the numeric part
+      const rangeMatch = cleanRange.match(/[<>]?\s*\d+(?:[,.-]\d+)?/)
+      cleanRange = rangeMatch ? rangeMatch[0] : ''
+      
+      const labResult = createExactLabResult(
+        examen.trim(),
+        resultado.trim(),
+        healthMarkerLookup,
+        0,
+        match[0],
+        0
+      )
+      
+      if (labResult) {
+        labResult.valorReferencia = cleanRange || labResult.valorReferencia
+        labResult.tipoMuestra = 'SUERO'
+        console.log(`✅ Lipid profile: ${labResult.examen} = ${labResult.resultado}`)
+        results.push(labResult)
+      }
+    }
+  }
+  
+  return results
+}
+
+/**
+ * Dedicated parser for HEMOGRAM section
+ * Handles blood count with embedded differential
+ */
+function parseHemogramPanel(text: string, healthMarkerLookup: Map<string, HealthMarkerMapping>): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  // Look for hemogram section
+  const hemogramSectionMatch = text.match(/RECUENTO GLOBULOS ROJOS[\s\S]*?(?=(?:ORINA|ELECTROLITOS|PERFIL|$))/i)
+  if (!hemogramSectionMatch) return results
+  
+  const hemogramSection = hemogramSectionMatch[0]
+  console.log('🔬 Parsing HEMOGRAM section')
+  
+  // Define expected hemogram labs in order
+  const hemogramLabs = [
+    'RECUENTO GLOBULOS ROJOS',
+    'HEMATOCRITO', 
+    'HEMOGLOBINA',
+    'V.C.M',
+    'H.C.M',
+    'C.H.C.M',
+    'RECUENTO PLAQUETAS',
+    'RECUENTO GLOBULOS BLANCOS',
+    'EOSINOFILOS',
+    'BASOFILOS',
+    'LINFOCITOS',
+    'MONOCITOS',
+    'NEUTROFILOS'
+  ]
+  
+  for (const labName of hemogramLabs) {
+    // Skip if already extracted
+    if (isAlreadyExtracted(results, labName)) continue
+    
+    // Constrained pattern for this specific lab
+    const escapedLabName = labName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\(([^)]+)\\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)`, 'g')
+    
+    const match = pattern.exec(hemogramSection)
+    if (match) {
+      const [, examen, resultado, unidad, rangeData] = match
+      
+      // Extract just the numeric range
+      let cleanRange = rangeData
+        .replace(/Citometría de flujo.*$/g, '')
+        .replace(/Colorimetria.*$/g, '')
+        .trim()
+      
+      const rangeMatch = cleanRange.match(/\d+(?:[,.-]\d+)?/)
+      cleanRange = rangeMatch ? rangeMatch[0] : ''
+      
+      const labResult = createExactLabResult(
+        examen.trim(),
+        resultado.trim(),
+        healthMarkerLookup,
+        0,
+        match[0],
+        0
+      )
+      
+      if (labResult) {
+        labResult.valorReferencia = cleanRange || labResult.valorReferencia
+        labResult.tipoMuestra = 'SANGRE TOTAL + E.D.T.A.'
+        console.log(`✅ Hemogram: ${labResult.examen} = ${labResult.resultado}`)
+        results.push(labResult)
+      }
+    }
+  }
+  
+  return results
+}
+
+/**
  * Extract ALL lab results from Chilean PDF text with group-aware 5-column parsing
  */
 export function extractAllLabResults(text: string, pages?: string[]): ComprehensiveLabResult[] {
@@ -972,7 +1118,12 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   // Clean contaminated fields BEFORE secondary parsing
   const decontaminatedText = cleanContaminatedNormalRanges(cleanedText)
   
-  // Secondary approach: Group-aware 5-column parsing for remaining labs
+  // Secondary approach: Dedicated parsers for complex sections
+  const lipidResults = parseLipidProfile(decontaminatedText, healthMarkerLookup)
+  const hemogramResults = parseHemogramPanel(decontaminatedText, healthMarkerLookup)
+  console.log(`🔬 Dedicated parsers found ${lipidResults.length + hemogramResults.length} results (${lipidResults.length} lipids + ${hemogramResults.length} hemogram)`)
+  
+  // Tertiary approach: Group-aware 5-column parsing for remaining labs
   const groupResults = extractLabsByGroupStructure(decontaminatedText, healthMarkerLookup)
   console.log(`📊 Group-aware parser found ${groupResults.length} additional results`)
   
@@ -998,8 +1149,10 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   
   // Combine all extraction approaches
   results.push(...exactResults)
+  results.push(...lipidResults)
+  results.push(...hemogramResults)
   results.push(...groupResults)
-  console.log(`🎯 Total before deduplication: ${results.length} results (${exactResults.length} exact + ${groupResults.length} group + ${results.length - exactResults.length - groupResults.length} fallback)`)
+  console.log(`🎯 Total before deduplication: ${results.length} results (${exactResults.length} exact + ${lipidResults.length} lipid + ${hemogramResults.length} hemogram + ${groupResults.length} group + ${results.length - exactResults.length - lipidResults.length - hemogramResults.length - groupResults.length} fallback)`)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
@@ -1018,28 +1171,27 @@ function extractNumericResults(
 ): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   
-  // Pattern for standard numeric results: EXAMEN RESULTADO (UNIDAD) REFERENCIA
+  // CONSTRAINED patterns for standard numeric results - prevent greedy capture
+  const valorReferenciaPattern = "(?:(?:Menor a|Mayor a|Hasta)\\s*[\\d.,<>\\s]+|[\\d.,]+(?:\\s*-\\s*[\\d.,]+)|Normal:?\\s*[\\s<>\\d.,]+|[\\d.,]+-[\\d.,]+)"
+  
   const numericPatterns = [
-    // Standard pattern: GLICEMIA EN AYUNO (BASAL) 269 (mg/dL) [ * ] 74 - 106
-    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s+(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].+))?$/gm,
+    // Constrained standard pattern: GLICEMIA EN AYUNO (BASAL) 269 (mg/dL) [ * ] 74-106
+    new RegExp(`^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s\\.()\\/-]{5,50})\\s+([\\d,]+(?:\\.\\d+)?)\\s+\\(([^)]+)\\)\\s*(\\[?\\s?\\*?\\s?\\]?)?\\s*(${valorReferenciaPattern})`, 'gm'),
     
-    // Compact pattern: CREATININA0,91(mg/dL) 0,55 - 1,02
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+)/g,
+    // Compact pattern with constrained reference: CREATININA0,91(mg/dL) 0,55-1,02
+    new RegExp(`([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s\\.()\\/-]{5,40})([\\d,]+(?:\\.\\d+)?)\\(([^)]+)\\)\\s*(\\[?\\s?\\*?\\s?\\]?)?\\s*(${valorReferenciaPattern})`, 'g'),
     
-    // Spaced pattern: HEMOGLOBINA    14.2    (g/dL)    12.3 - 15.3
-    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s{2,}(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(.+)/gm,
+    // Spaced pattern with constrained range: HEMOGLOBINA    14.2    (g/dL)    12.3-15.3
+    new RegExp(`^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s\\.()\\/-]{5,50})\\s{2,}([\\d,]+(?:\\.\\d+)?)\\s+\\(([^)]+)\\)\\s+(${valorReferenciaPattern})`, 'gm'),
     
-    // Enhanced embedded patterns for missing results
-    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|HEMOGLOBINA|HEMATOCRITO|VCM|HCM|CHCM|PLAQUETAS|LEUCOCITOS|NEUTROFILOS|LINFOCITOS|MONOCITOS|EOSINOFILOS|BASOFILOS|HEMOGLOBINA GLICOSILADA|HBA1C)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
+    // Enhanced embedded patterns - stop at next ALL-CAPS lab name
+    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|HEMOGLOBINA|HEMATOCRITO|VCM|HCM|CHCM|PLAQUETAS|LEUCOCITOS|NEUTROFILOS|LINFOCITOS|MONOCITOS|EOSINOFILOS|BASOFILOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
     
-    // Blood count embedded: RECUENTO GLOBULOS ROJOS4,6(x10^6/uL) HEMATOCRITO42,0(%)
-    /(RECUENTO GLOBULOS [A-Z]+|HEMATOCRITO|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS BLANCOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
+    // Blood count embedded - stop before next lab
+    /(RECUENTO GLOBULOS [A-Z]+|HEMATOCRITO|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS BLANCOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
     
-    // Electrolytes embedded: SODIO (Na) EN SANGRE136,7(mEq/L) POTASIO (K)
-    /(SODIO|POTASIO|CLORO|BICARBONATO)\s*(?:\([^)]+\))?\s*(?:EN SANGRE)?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
-    
-    // Liver enzymes: ALT, AST variations
-    /(ALT|AST|GGT|LDH|BILIRRUBINA DIRECTA|BILIRRUBINA INDIRECTA|PROTEINAS TOTALES|ALBUMINA)\s*(?:\([^)]+\))?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi
+    // Electrolytes embedded - constrained to not capture next lab
+    /(SODIO|POTASIO|CLORO|BICARBONATO)\s*(?:\([^)]+\))?\s*(?:EN SANGRE)?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi
   ]
   
   for (const pattern of numericPatterns) {
@@ -2016,22 +2168,28 @@ function cleanContaminatedNormalRanges(text: string): string {
 function cleanHeaderFooterContamination(text: string, pages?: string[]): string {
   let cleanedText = text
   
-  // Common header/footer patterns to remove
+  // Generic header/footer patterns to remove (works for any patient)
   const contaminationPatterns = [
-    // Patient info repeated on every page
-    /RUT\s*:\s*7\.236\.426-0\s+Folio\s*:\s*394499\s+Profesional Solicitante:\s*:\s*STEVENSON JEAN SIMON\s+Nombre\s*:\s*ISABEL DEL ROSARIO BOLADOS VEGA\s+Sexo\s*:\s*Femenino\s+Edad\s*:\s*73a 3m 17d\s+Fecha de Ingreso\s*:\s*15\/10\/2024 8:29:49\s+Toma de Muestra\s*:\s*15\/10\/2024 8:29:49\s+Fecha de Validación\s*:\s*[^\s]+\s+Procedencia\s*:\s*CESFAM QUEBRADA VERDE/g,
+    // Generic patient info block - matches any patient data
+    /RUT\s*:\s*[\d.Kk-]+\s+Folio\s*:\s*\d+\s+Profesional Solicitante:\s*:\s*[^F]*?Fecha de Ingreso[^P]*?Procedencia\s*:\s*[A-ZÁÉÍÓÚÑ\s]+/g,
     
-    // Lab address repeated on every page
-    /LABORATORIO CLÍNICO CORPORACIÓN MUNICIPAL VALPARAISO\s+Calle Washington #32, tercer piso, Valparaiso/g,
+    // Generic lab address (any municipal lab)
+    /LABORATORIO CLÍNICO CORPORACIÓN MUNICIPAL[^F]*?Valparaiso/g,
     
-    // Reception date repeated multiple times
-    /Fecha de Recepción en el Laboratorio:\s*15\/10\/2024\s+[\d:]+/g,
+    // Generic reception date pattern
+    /Fecha de Recepción en el Laboratorio:\s*[\d\/]+\s+[\d:]+/g,
     
-    // Generic patient info pattern (for any patient)
-    /RUT\s*:\s*[\d\.-]+\s+Folio\s*:\s*\d+\s+Profesional Solicitante:\s*:\s*[^F]+Fecha de Ingreso[^P]+Procedencia\s*:\s*[A-ZÁÉÍÓÚÑ\s]+/g,
+    // Generic validation date embedded in results
+    /Fecha de Validación\s*:\s*[\d\/]+\s+[\d:]+/g,
     
-    // Generic lab address
-    /LABORATORIO CLÍNICO CORPORACIÓN MUNICIPAL[^F]*?Valparaiso/g
+    // Generic page headers with timestamps
+    /RUT\s*:\s*[\d.Kk-]+[\s\S]*?Procedencia\s*:\s*[A-ZÁÉÍÓÚÑ\s]+/g,
+    
+    // Method analytical contamination 
+    /Método Analítico\s*:\s*[A-Za-z\s,]+\s+RUT/g,
+    
+    // Remove standalone institution names
+    /CORPORACIÓN MUNICIPAL VALPARAISO/g
   ]
   
   // Remove contamination patterns
@@ -2048,18 +2206,74 @@ function cleanHeaderFooterContamination(text: string, pages?: string[]): string 
 }
 
 /**
- * Extract sample type from section text
+ * Extract sample type from section text with improved detection
  */
 function extractSampleType(text: string): string {
-  const sampleTypes = ['SUERO', 'SANGRE TOTAL + E.D.T.A.', 'SANGRE TOTAL', 'ORINA', 'Suero y plasma (heparina de litio)']
+  const sampleTypes = [
+    'SANGRE TOTAL + E.D.T.A.',
+    'SANGRE TOTAL',
+    'SUERO',
+    'ORINA',
+    'Suero y plasma (heparina de litio)'
+  ]
   
+  // Look for explicit sample type declarations
   for (const sampleType of sampleTypes) {
-    if (text.includes(`Tipo de Muestra : ${sampleType}`)) {
+    if (text.includes(`Tipo de Muestra : ${sampleType}`) || 
+        text.includes(`Tipo Muestra : ${sampleType}`) ||
+        text.includes(`Muestra : ${sampleType}`)) {
       return sampleType
     }
   }
   
-  return 'SUERO' // Default
+  // Infer sample type based on lab context
+  if (text.includes('HEMOGRAMA') || 
+      text.includes('RECUENTO GLOBULOS') || 
+      text.includes('HEMATOCRITO') ||
+      text.includes('LEUCOCITOS') ||
+      text.includes('NEUTROFILOS') ||
+      text.includes('LINFOCITOS')) {
+    return 'SANGRE TOTAL + E.D.T.A.'
+  }
+  
+  if (text.includes('ORINA') || 
+      text.includes('DENSIDAD') ||
+      text.includes('HEMATIES POR CAMPO') ||
+      text.includes('LEUCOCITOS POR CAMPO')) {
+    return 'ORINA'
+  }
+  
+  return 'SUERO' // Default for biochemistry
+}
+
+/**
+ * Improved sample type detection for lab results
+ */
+function detectSampleTypeForResult(labName: string, context: string): string {
+  // Blood count markers always use SANGRE TOTAL + E.D.T.A.
+  const bloodCountMarkers = [
+    'HEMOGLOBINA', 'HEMATOCRITO', 'RECUENTO GLOBULOS', 'V.C.M', 'H.C.M', 'C.H.C.M',
+    'EOSINOFILOS', 'BASOFILOS', 'LINFOCITOS', 'MONOCITOS', 'NEUTROFILOS',
+    'BACILIFORMES', 'JUVENILES', 'MIELOCITOS', 'PROMIELOCITOS', 'BLASTOS'
+  ]
+  
+  if (bloodCountMarkers.some(marker => labName.includes(marker))) {
+    return 'SANGRE TOTAL + E.D.T.A.'
+  }
+  
+  // Urine markers
+  const urineMarkers = [
+    'COLOR', 'ASPECTO', 'DENSIDAD', 'PROTEINAS', 'GLUCOSA', 'CETONAS', 
+    'HEMATIES POR CAMPO', 'LEUCOCITOS POR CAMPO', 'MICROALBUMINURIA',
+    'UROBILINOGENO', 'CRISTALES', 'CILINDROS', 'BACTERIAS'
+  ]
+  
+  if (urineMarkers.some(marker => labName.includes(marker))) {
+    return 'ORINA'
+  }
+  
+  // Extract from context if available
+  return extractSampleType(context)
 }
 
 /**
