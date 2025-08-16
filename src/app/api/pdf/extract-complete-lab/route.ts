@@ -12,9 +12,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
-import { extractCompleteLabReport } from '@/lib/pdf-parsing/lab-results-extractor'
 import { extractAllLabResults } from '@/lib/pdf-parsing/comprehensive-lab-extractor'
 import { extractTextFromPDF } from '@/lib/pdf-parsing/pdf-text-extractor'
+import { extractPatientFromPDF } from '@/lib/pdf-parsing/patient-extraction'
+
+// Simple metadata extraction helpers
+function extractFolioFromText(text: string): string | null {
+  const folioMatch = text.match(/Folio\s*:?\s*(\d+)/i)
+  return folioMatch ? folioMatch[1] : null
+}
+
+function extractDateFromText(text: string, type: string): string | null {
+  const patterns = {
+    ingreso: /Fecha\s+Ingreso\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+    muestra: /Toma\s+Muestra\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
+    validacion: /Fecha\s+Validación\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i
+  }
+  const pattern = patterns[type as keyof typeof patterns]
+  if (!pattern) return null
+  const match = text.match(pattern)
+  return match ? match[1] : null
+}
+
+function extractProcedenciaFromText(text: string): string | null {
+  const procedenciaMatch = text.match(/Procedencia\s*:?\s*([A-Z\u00c1\u00c9\u00cd\u00d3\u00da\u00d1\s]+)/i)
+  return procedenciaMatch ? procedenciaMatch[1].trim() : null
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,61 +96,50 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Use comprehensive extractor for maximum lab result coverage with page-aware cleaning
+    // Use only comprehensive extractor for lab results
     const comprehensiveResults = extractAllLabResults(textExtraction.fullText, textExtraction.pages)
     console.log(`🎯 Comprehensive extractor found ${comprehensiveResults.length} results`)
     
-    // Also get patient info and metadata from the original extractor
-    const extractionResult = await extractCompleteLabReport(pdfBuffer)
-    
-    if (!extractionResult.success) {
-      return NextResponse.json(
-        { 
-          error: extractionResult.error || 'Error al procesar el PDF',
-          success: false
-        },
-        { status: 400 }
-      )
+    // Extract patient info separately
+    const patientExtraction = await extractPatientFromPDF(pdfBuffer)
+    if (!patientExtraction.success) {
+      console.warn('Patient extraction failed:', patientExtraction.error)
     }
     
-    // Merge comprehensive results with patient info and metadata
-    const enhancedResult = {
-      ...extractionResult,
-      labResults: comprehensiveResults.length > extractionResult.labResults.length 
-        ? comprehensiveResults.map(cr => ({
-            examen: cr.examen,
-            resultado: cr.resultado,
-            unidad: cr.unidad,
-            valorReferencia: cr.valorReferencia,
-            metodo: cr.metodo,
-            tipoMuestra: cr.tipoMuestra,
-            isAbnormal: cr.isAbnormal,
-            abnormalIndicator: cr.abnormalIndicator,
-            systemCode: cr.systemCode,
-            category: cr.category,
-            priority: cr.priority,
-            confidence: cr.confidence,
-            position: cr.position,
-            context: cr.context
-          }))
-        : extractionResult.labResults,
+    // Build result using only comprehensive extractor
+    const finalResult = {
+      patient: patientExtraction.patient,
+      labResults: comprehensiveResults.map(cr => ({
+        examen: cr.examen,
+        resultado: cr.resultado,
+        unidad: cr.unidad,
+        valorReferencia: cr.valorReferencia,
+        metodo: cr.metodo,
+        tipoMuestra: cr.tipoMuestra,
+        isAbnormal: cr.isAbnormal,
+        abnormalIndicator: cr.abnormalIndicator,
+        systemCode: cr.systemCode,
+        category: cr.category,
+        priority: cr.priority,
+        confidence: cr.confidence,
+        position: cr.position,
+        context: cr.context
+      })),
       metadata: {
-        ...extractionResult.metadata,
-        totalResults: comprehensiveResults.length > extractionResult.labResults.length 
-          ? comprehensiveResults.length 
-          : extractionResult.metadata.totalResults,
-        abnormalCount: comprehensiveResults.length > extractionResult.labResults.length
-          ? comprehensiveResults.filter(r => r.isAbnormal).length
-          : extractionResult.metadata.abnormalCount,
-        criticalCount: comprehensiveResults.length > extractionResult.labResults.length
-          ? comprehensiveResults.filter(r => r.priority === 'critical' && r.isAbnormal).length
-          : extractionResult.metadata.criticalCount
-      }
+        folio: extractFolioFromText(textExtraction.fullText),
+        fechaIngreso: extractDateFromText(textExtraction.fullText, 'ingreso'),
+        tomaMuestra: extractDateFromText(textExtraction.fullText, 'muestra'),
+        fechaValidacion: extractDateFromText(textExtraction.fullText, 'validacion'),
+        profesionalSolicitante: patientExtraction.patient?.doctor || 'Not found',
+        procedencia: extractProcedenciaFromText(textExtraction.fullText),
+        totalResults: comprehensiveResults.length,
+        abnormalCount: comprehensiveResults.filter(r => r.isAbnormal).length,
+        criticalCount: comprehensiveResults.filter(r => r.priority === 'crítico' && r.isAbnormal).length
+      },
+      confidence: patientExtraction.patient?.confidence || 95
     }
     
-    console.log(`✅ Enhanced extraction: ${enhancedResult.labResults.length} total results (${enhancedResult.metadata.abnormalCount} abnormal, ${enhancedResult.metadata.criticalCount} critical)`)
-    
-    const finalResult = enhancedResult
+    console.log(`✅ Clean extraction: ${finalResult.labResults.length} total results (${finalResult.metadata.abnormalCount} abnormal, ${finalResult.metadata.criticalCount} critical)`)
 
     // Log successful extraction for audit
     console.log('Complete lab extraction by user:', session.user.email, {
@@ -137,7 +149,7 @@ export async function POST(request: NextRequest) {
       abnormalCount: finalResult.metadata.abnormalCount,
       criticalCount: finalResult.metadata.criticalCount,
       confidence: finalResult.confidence,
-      extractorUsed: comprehensiveResults.length > extractionResult.labResults.length ? 'comprehensive' : 'standard'
+      extractorUsed: 'comprehensive-only'
     })
 
     // Return complete extraction result
