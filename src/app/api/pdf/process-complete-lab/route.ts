@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { extractCompleteLabReport } from '@/lib/pdf-parsing/lab-results-extractor'
-import { createClient } from '@/lib/database/supabase'
+import { supabase } from '@/lib/database/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -92,8 +92,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for duplicate folio if present
-    const supabase = createClient()
-    
     if (extractionResult.metadata.folio) {
       const { data: existingReport } = await supabase
         .from('lab_reports')
