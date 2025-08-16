@@ -2747,7 +2747,6 @@ function createLabResult(params: {
   // Try to map to known health marker
   let systemCode: string | null = null
   let category: string = 'other'
-  let priority: string = 'low'
   
   const upperExamen = params.examen.toUpperCase()
   const markerEntries = Array.from(params.healthMarkerLookup.entries())
@@ -2756,9 +2755,18 @@ function createLabResult(params: {
     if (upperExamen.includes(searchTerm) || searchTerm.includes(upperExamen)) {
       systemCode = marker.systemCode
       category = marker.category
-      priority = marker.priority
       break
     }
+  }
+  
+  // Calculate dynamic priority based on normal range if it's a numeric result
+  let priority: string = 'normal'
+  if (typeof params.resultado === 'number' && params.valorReferencia) {
+    const severityResult = calculateClinicalSeverity(params.resultado, params.valorReferencia, params.unidad || '')
+    priority = severityResult.severity
+  } else {
+    // For qualitative results, use abnormal status
+    priority = params.isAbnormal ? 'moderado' : 'normal'
   }
   
   return {
