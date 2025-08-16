@@ -1602,6 +1602,8 @@ function extractNumericResults(
   const valorReferenciaPattern = "(?:(?:Menor a|Mayor a|Hasta)\\s*[\\d.,<>\\s]+|[\\d.,]+(?:\\s*-\\s*[\\d.,]+)|Normal:?\\s*[\\s<>\\d.,]+|[\\d.,]+-[\\d.,]+)"
   
   const numericPatterns = [
+    // Pattern for no space between name and result: H. TIROESTIMULANTE (TSH)11,040(μUI/mL)[ * ] 0,55-4,78
+    new RegExp(`^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s\\.()\\/-]{5,50})([\\d,]+(?:\\.\\d+)?)\\(([^)]+)\\)\\s*(\\[?\\s?\\*?\\s?\\]?)?\\s*(${valorReferenciaPattern})`, 'gm'),
     // Constrained standard pattern: GLICEMIA EN AYUNO (BASAL) 269 (mg/dL) [ * ] 74-106
     new RegExp(`^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\\s\\.()\\/-]{5,50})\\s+([\\d,]+(?:\\.\\d+)?)\\s+\\(([^)]+)\\)\\s*(\\[?\\s?\\*?\\s?\\]?)?\\s*(${valorReferenciaPattern})`, 'gm'),
     
@@ -1635,7 +1637,7 @@ function extractNumericResults(
         valorReferencia: valorReferencia?.trim() || null,
         metodo: metodo?.trim() || null,
         tipoMuestra,
-        isAbnormal: abnormalMarker.includes('*'),
+        isAbnormal: isAbnormalResult(abnormalMarker),
         abnormalIndicator: abnormalMarker.trim(),
         resultType: 'numeric',
         confidence: 95,
@@ -1847,8 +1849,8 @@ function extractTabularResults(
         valorReferencia,
         metodo,
         tipoMuestra,
-        isAbnormal: line.includes('[*]') || line.includes('[ * ]'),
-        abnormalIndicator: line.includes('[*]') ? '[*]' : '',
+        isAbnormal: isAbnormalResult(line),
+        abnormalIndicator: getAbnormalIndicator(line),
         resultType: isNaN(parseFloat(resultado.replace(',', '.'))) ? 'qualitative' : 'numeric',
         confidence: 75,
         position: text.indexOf(fullMatch),
@@ -1971,7 +1973,7 @@ function extractNumericLabFormat(
         valorReferencia: valorReferencia.trim() || format.normalRange || '',
         metodo: metodo.trim() || format.method || '',
         tipoMuestra: detectSampleType(allLines, lineIndex),
-        isAbnormal: abnormalMarker.includes('*'),
+        isAbnormal: isAbnormalResult(abnormalMarker),
         abnormalIndicator: abnormalMarker.trim(),
         systemCode: mapToSystemCode(labName),
         category: format.category,
@@ -2385,7 +2387,7 @@ function parse5ColumnStructure(
       const cleanUnidad = unidad.trim()
       const cleanReferencia = valorReferencia.trim()
       const cleanMetodo = metodo.trim()
-      const isAbnormal = abnormalMarker.includes('*')
+      const isAbnormal = isAbnormalResult(abnormalMarker)
       
       return createLabResult({
         examen: labName,
@@ -2419,8 +2421,8 @@ function extractEmbeddedFromLine(
 ): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   
-  // Pattern for embedded results: COLESTEROL TOTAL213(mg/dL)
-  const embeddedPattern = /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\(\)]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)/g
+  // Pattern for embedded results: COLESTEROL TOTAL213(mg/dL) - exclude parentheses from lab name to avoid duplication
+  const embeddedPattern = /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)/g
   
   let match
   while ((match = embeddedPattern.exec(line)) !== null) {
@@ -2433,8 +2435,8 @@ function extractEmbeddedFromLine(
       valorReferencia: null,
       metodo: null,
       tipoMuestra: sampleType,
-      isAbnormal: line.includes('[*]') || line.includes('[ * ]'),
-      abnormalIndicator: line.includes('[*]') ? '[*]' : '',
+      isAbnormal: isAbnormalResult(line),
+      abnormalIndicator: getAbnormalIndicator(line),
       resultType: 'numeric',
       confidence: 90,
       position: lineIndex,
@@ -2510,8 +2512,8 @@ function extractEmbeddedMultiResults(
         valorReferencia: cleanReferencia || null,
         metodo: null,
         tipoMuestra,
-        isAbnormal: text.includes('[*]') || text.includes('[ * ]'),
-        abnormalIndicator: text.includes('[*]') ? '[*]' : '',
+        isAbnormal: isAbnormalResult(text),
+        abnormalIndicator: getAbnormalIndicator(text),
         resultType: 'numeric',
         confidence: 85,
         position: text.indexOf(fullMatch),
@@ -2792,4 +2794,21 @@ function removeDuplicateResults(results: ComprehensiveLabResult[]): Comprehensiv
   
   console.log(`🔧 Deduplication: ${results.length} → ${uniqueResults.length} results`)
   return uniqueResults
+}
+
+/**
+ * Check if a result is marked as abnormal
+ */
+function isAbnormalResult(text: string): boolean {
+  return text.includes('[ * ]') || text.includes('[*]') || text.includes('*')
+}
+
+/**
+ * Extract abnormal indicator from text
+ */
+function getAbnormalIndicator(text: string): string {
+  if (text.includes('[ * ]')) return '[ * ]'
+  if (text.includes('[*]')) return '[*]'
+  if (text.includes('*')) return '*'
+  return ''
 }

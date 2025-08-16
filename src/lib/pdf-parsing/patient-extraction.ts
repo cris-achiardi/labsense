@@ -34,30 +34,32 @@ function extractRUT(text: string): string | null {
  * Extracts patient name from text
  */
 function extractPatientName(text: string): string | null {
-  // Field separators used in Chilean medical documents
-  const fieldSeparators = 'Nombre|RUT|Edad|Sexo|Profesional\\s+Solicitante|Folio|Fecha\\s+de\\s+Ingreso|Toma\\s+de\\s+Muestra|Fecha\\s+de\\s+Validación|Procedencia'
-  
-  // Chilean patient name patterns with field separators
+  // Chilean lab format: field name on one line, value on next line
   const namePatterns = [
-    // Paciente: NOMBRE APELLIDO - stop at any field separator
-    new RegExp(`PACIENTE\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators}))`, 'i'),
-    // Nombre: NOMBRE APELLIDO - stop at any field separator  
-    new RegExp(`NOMBRE\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators}))`, 'i'),
-    // Nombre del Paciente: NOMBRE APELLIDO - stop at any field separator
-    new RegExp(`NOMBRE\\s+DEL\\s+PACIENTE\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators}))`, 'i'),
-    // After RUT: 11.111.111-K NOMBRE APELLIDO - stop at any field separator
-    new RegExp(`\\d{1,2}\\.?\\d{3}\\.?\\d{3}-[0-9K]\\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators}))`, 'i'),
-    // Patient identification section - stop at any field separator
-    new RegExp(`IDENTIFICACIÓN\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators}))`, 'i')
+    // Nombre :\n ISABEL DEL ROSARIO BOLADOS VEGA
+    /Nombre\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // NOMBRE :\n ISABEL DEL ROSARIO BOLADOS VEGA  
+    /NOMBRE\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // Paciente :\n ISABEL DEL ROSARIO BOLADOS VEGA
+    /Paciente\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // PACIENTE :\n ISABEL DEL ROSARIO BOLADOS VEGA
+    /PACIENTE\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // Fallback: same line patterns
+    /Nombre\s*:?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?=\s*(?:Sexo|RUT|Edad|Folio))/i,
+    /NOMBRE\s*:?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?=\s*(?:Sexo|RUT|Edad|Folio))/i
   ]
 
   for (const pattern of namePatterns) {
     const match = text.match(pattern)
     if (match && match[1]) {
-      const name = match[1].trim()
+      let name = match[1].trim()
+      
+      // Clean up any trailing content that might be captured
+      name = name.replace(/\s*(?:Sexo|RUT|Edad|Folio|Fecha).*$/i, '').trim()
+      
       // Validate Chilean name structure (2-4 components: 1-2 names + 2 lastnames)
       const nameComponents = name.split(/\s+/)
-      if (nameComponents.length >= 2 && nameComponents.length <= 4 && name.length >= 5 && name.length <= 60) {
+      if (nameComponents.length >= 2 && nameComponents.length <= 6 && name.length >= 5 && name.length <= 80) {
         return name
       }
     }
@@ -70,19 +72,25 @@ function extractPatientName(text: string): string | null {
  * Extracts patient age from text
  */
 function extractAge(text: string): string | null {
-  // Field separators used in Chilean medical documents
-  const fieldSeparators = 'Nombre|RUT|Edad|Sexo|Profesional\\s+Solicitante|Folio|Fecha\\s+de\\s+Ingreso|Toma\\s+de\\s+Muestra|Fecha\\s+de\\s+Validación|Procedencia'
-  
-  // Chilean age patterns with field separators
+  // Chilean lab format: field name on one line, value on next line
   const agePatterns = [
-    // Edad: 73a 3m 17d (Chilean format: years, months, days) - stop at field separator
-    new RegExp(`EDAD\\s*:?\\s*(\\d{1,3}a\\s*\\d{1,2}m\\s*\\d{1,2}d)(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Edad: 45 años - stop at field separator
-    new RegExp(`EDAD\\s*:?\\s*(\\d{1,3})\\s*años?(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Edad: 45 - stop at field separator
-    new RegExp(`EDAD\\s*:?\\s*(\\d{1,3})(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Fecha de nacimiento calculation (if we find birth date) - stop at field separator
-    new RegExp(`NACIMIENTO\\s*:?\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{4})(?=\\s+(?:${fieldSeparators})|$)`, 'i')
+    // Edad :\n 73a 3m 17d
+    /Edad\s*:?\s*\n\s*(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
+    // EDAD :\n 73a 3m 17d
+    /EDAD\s*:?\s*\n\s*(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
+    // Edad :\n 45 años
+    /Edad\s*:?\s*\n\s*(\d{1,3})\s*años?/i,
+    // EDAD :\n 45 años
+    /EDAD\s*:?\s*\n\s*(\d{1,3})\s*años?/i,
+    // Edad :\n 45
+    /Edad\s*:?\s*\n\s*(\d{1,3})/i,
+    // EDAD :\n 45
+    /EDAD\s*:?\s*\n\s*(\d{1,3})/i,
+    // Fallback: same line patterns
+    /Edad\s*:?\s*(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
+    /EDAD\s*:?\s*(\d{1,3}a\s*\d{1,2}m\s*\d{1,2}d)/i,
+    /Edad\s*:?\s*(\d{1,3})\s*años?/i,
+    /EDAD\s*:?\s*(\d{1,3})\s*años?/i
   ]
 
   for (const pattern of agePatterns) {
@@ -99,15 +107,19 @@ function extractAge(text: string): string | null {
  * Extracts patient gender from text
  */
 function extractGender(text: string): string | null {
-  // Field separators used in Chilean medical documents
-  const fieldSeparators = 'Nombre|RUT|Edad|Sexo|Profesional\\s+Solicitante|Folio|Fecha\\s+de\\s+Ingreso|Toma\\s+de\\s+Muestra|Fecha\\s+de\\s+Validación|Procedencia'
-  
-  // Chilean gender patterns with field separators
+  // Chilean lab format: field name on one line, value on next line
   const genderPatterns = [
-    // Sexo: MASCULINO/FEMENINO - stop at field separator
-    new RegExp(`SEXO\\s*:?\\s*(MASCULINO|FEMENINO|M|F)(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Género: MASCULINO/FEMENINO - stop at field separator
-    new RegExp(`GÉNERO\\s*:?\\s*(MASCULINO|FEMENINO|M|F)(?=\\s+(?:${fieldSeparators})|$)`, 'i')
+    // Sexo :\n Femenino
+    /Sexo\s*:?\s*\n\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i,
+    // SEXO :\n Femenino
+    /SEXO\s*:?\s*\n\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i,
+    // Género :\n Femenino
+    /Género\s*:?\s*\n\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i,
+    // GÉNERO :\n Femenino
+    /GÉNERO\s*:?\s*\n\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i,
+    // Fallback: same line patterns
+    /Sexo\s*:?\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i,
+    /SEXO\s*:?\s*(MASCULINO|FEMENINO|Masculino|Femenino|M|F)/i
   ]
 
   for (const pattern of genderPatterns) {
@@ -125,26 +137,37 @@ function extractGender(text: string): string | null {
  * Extracts doctor name from "Profesional Solicitante" field
  */
 function extractDoctorName(text: string): string | null {
-  // Field separators used in Chilean medical documents
-  const fieldSeparators = 'Nombre|RUT|Edad|Sexo|Profesional\\s+Solicitante|Folio|Fecha\\s+de\\s+Ingreso|Toma\\s+de\\s+Muestra|Fecha\\s+de\\s+Validación|Procedencia'
-  
-  // Chilean doctor name patterns (format: madre apellido, padre apellido, nombre)
+  // Chilean lab format: field name on one line, value on next line
+  // Note: some PDFs have "Profesional Solicitante: :" with double colon
   const doctorPatterns = [
-    // Profesional Solicitante: APELLIDO APELLIDO, NOMBRE - stop at field separator
-    new RegExp(`PROFESIONAL\\s+SOLICITANTE\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Medico: APELLIDO APELLIDO, NOMBRE - stop at field separator
-    new RegExp(`MEDICO\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators})|$)`, 'i'),
-    // Doctor: APELLIDO APELLIDO, NOMBRE - stop at field separator
-    new RegExp(`DOCTOR\\s*:?\\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+(?:\\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ]+){1,3})(?=\\s+(?:${fieldSeparators})|$)`, 'i')
+    // Profesional Solicitante: :\n STEVENSON JEAN SIMON
+    /Profesional\s+Solicitante\s*:?\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // PROFESIONAL SOLICITANTE: :\n STEVENSON JEAN SIMON
+    /PROFESIONAL\s+SOLICITANTE\s*:?\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // Médico :\n STEVENSON JEAN SIMON
+    /Médico\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // MEDICO :\n STEVENSON JEAN SIMON
+    /MEDICO\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // Doctor :\n STEVENSON JEAN SIMON
+    /Doctor\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // DOCTOR :\n STEVENSON JEAN SIMON
+    /DOCTOR\s*:?\s*\n\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+)/i,
+    // Fallback: same line patterns
+    /Profesional\s+Solicitante\s*:?\s*:?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?=\s*(?:Nombre|Folio|Fecha))/i,
+    /PROFESIONAL\s+SOLICITANTE\s*:?\s*:?\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?=\s*(?:Nombre|Folio|Fecha))/i
   ]
 
   for (const pattern of doctorPatterns) {
     const match = text.match(pattern)
     if (match && match[1]) {
-      const doctor = match[1].trim()
+      let doctor = match[1].trim()
+      
+      // Clean up any trailing content that might be captured
+      doctor = doctor.replace(/\s*(?:Nombre|Folio|Fecha|Sexo|RUT|Edad).*$/i, '').trim()
+      
       // Validate doctor name structure (2-4 components like patient names)
       const nameComponents = doctor.split(/\s+/)
-      if (nameComponents.length >= 2 && nameComponents.length <= 4 && doctor.length >= 5 && doctor.length <= 60) {
+      if (nameComponents.length >= 2 && nameComponents.length <= 6 && doctor.length >= 5 && doctor.length <= 80) {
         return doctor
       }
     }
