@@ -27,6 +27,26 @@
  * - Adds complexity but significantly reduces contamination
  * 
  * Recommendation: Implement for v2.0 if current approach reaches limits
+ * 
+ * 📋 TODO: Fuzzy Matching Enhancement
+ * For even better accuracy, consider adding fuzzy string matching:
+ * 
+ * Implementation:
+ * - Install rapidfuzz or string-similarity library
+ * - Add fuzzy matching function for lab name variations
+ * - Match extracted names against CANONICAL_LAB_ALIASES with similarity threshold
+ * 
+ * Example:
+ * const fuzzyMatch = (input: string, candidates: string[], threshold = 0.8) => {
+ *   return candidates.find(candidate => 
+ *     similarity(input.toLowerCase(), candidate.toLowerCase()) >= threshold
+ *   )
+ * }
+ * 
+ * Benefits:
+ * - Handles OCR errors and variations not in canonical mapping
+ * - More robust to typos and formatting differences
+ * - Could increase extraction rate from 51 to closer to 62 results
  */
 
 import { CHILEAN_HEALTH_MARKERS, createHealthMarkerLookup, type HealthMarkerMapping } from './spanish-health-markers'
@@ -1205,6 +1225,71 @@ function filterMetadataContamination(text: string): string {
 }
 
 /**
+ * 🔧 Canonical mapping for duplicate/alias lab names
+ * Handles variations like VITAMINA B vs VITAMINA B12, PLAQUETAS vs RECUENTO PLAQUETAS
+ */
+const CANONICAL_LAB_ALIASES: Record<string, string> = {
+  // Vitamin variations
+  'VITAMINA B': 'VITAMINA B12',
+  'VITAMINA B 12': 'VITAMINA B12', 
+  'VIT B12': 'VITAMINA B12',
+  'COBALAMINA': 'VITAMINA B12',
+  
+  // Platelet variations
+  'PLAQUETAS': 'RECUENTO PLAQUETAS',
+  'RECUENTO DE PLAQUETAS': 'RECUENTO PLAQUETAS',
+  'PLT': 'RECUENTO PLAQUETAS',
+  
+  // Alkaline phosphatase variations
+  'ALCALINAS (ALP)': 'FOSF. ALCALINAS (ALP)',
+  'FOSFATASA ALCALINA': 'FOSF. ALCALINAS (ALP)',
+  'ALP': 'FOSF. ALCALINAS (ALP)',
+  
+  // Blood count variations
+  'GLOBULOS ROJOS': 'RECUENTO GLOBULOS ROJOS',
+  'ERITROCITOS': 'RECUENTO GLOBULOS ROJOS',
+  'RBC': 'RECUENTO GLOBULOS ROJOS',
+  'GLOBULOS BLANCOS': 'RECUENTO GLOBULOS BLANCOS',
+  'LEUCOCITOS': 'RECUENTO GLOBULOS BLANCOS',
+  'WBC': 'RECUENTO GLOBULOS BLANCOS',
+  
+  // Hemoglobin variations
+  'HB': 'HEMOGLOBINA',
+  'HGB': 'HEMOGLOBINA',
+  
+  // Hematocrit variations
+  'HCT': 'HEMATOCRITO',
+  'HCTO': 'HEMATOCRITO',
+  
+  // Glucose variations
+  'GLICEMIA': 'GLICEMIA EN AYUNO (BASAL)',
+  'GLUCOSA': 'GLICEMIA EN AYUNO (BASAL)',
+  'GLICEMIA BASAL': 'GLICEMIA EN AYUNO (BASAL)',
+  'GLUCOSE': 'GLICEMIA EN AYUNO (BASAL)',
+  
+  // HbA1c variations
+  'HBA1C': 'HEMOGLOBINA GLICADA A1C',
+  'HEMOGLOBINA GLICOSILADA': 'HEMOGLOBINA GLICADA A1C',
+  'A1C': 'HEMOGLOBINA GLICADA A1C',
+  
+  // Thyroid variations
+  'TSH': 'H. TIROESTIMULANTE (TSH)',
+  'TIROTROPINA': 'H. TIROESTIMULANTE (TSH)',
+  'T4 LIBRE': 'H. TIROXINA LIBRE (T4 LIBRE)',
+  'FT4': 'H. TIROXINA LIBRE (T4 LIBRE)',
+  
+  // Creatinine variations
+  'CREAT': 'CREATININA',
+  'CREA': 'CREATININA',
+  
+  // Cholesterol variations
+  'HDL': 'COLESTEROL HDL',
+  'LDL': 'COLESTEROL LDL (CALCULO)',
+  'COL TOTAL': 'COLESTEROL TOTAL',
+  'CHOL': 'COLESTEROL TOTAL'
+}
+
+/**
  * ✅ ChatGPT Strategy: Normalization pipeline for better data quality
  */
 function normalizeLabResult(result: ComprehensiveLabResult): ComprehensiveLabResult {
@@ -1226,15 +1311,21 @@ function normalizeLabResult(result: ComprehensiveLabResult): ComprehensiveLabRes
       .trim()
   }
   
-  // Normalize exam names - handle common variations
-  result.examen = result.examen
-    .replace(/\s+/g, ' ')
-    .replace(/GLICEMIA\s+EN\s+AYUNAS?/gi, 'GLICEMIA EN AYUNO (BASAL)')
-    .replace(/GLUCOSA\s+EN\s+AYUNO/gi, 'GLICEMIA EN AYUNO (BASAL)')
-    .replace(/HBA1C/gi, 'HEMOGLOBINA GLICADA A1C')
-    .replace(/TSH/gi, 'H. TIROESTIMULANTE (TSH)')
-    .replace(/T4\s+LIBRE/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
-    .trim()
+  // Apply canonical aliases for exam names
+  const upperExamen = result.examen.toUpperCase().trim()
+  if (CANONICAL_LAB_ALIASES[upperExamen]) {
+    result.examen = CANONICAL_LAB_ALIASES[upperExamen]
+  } else {
+    // Normalize exam names - handle common variations
+    result.examen = result.examen
+      .replace(/\s+/g, ' ')
+      .replace(/GLICEMIA\s+EN\s+AYUNAS?/gi, 'GLICEMIA EN AYUNO (BASAL)')
+      .replace(/GLUCOSA\s+EN\s+AYUNO/gi, 'GLICEMIA EN AYUNO (BASAL)')
+      .replace(/HBA1C/gi, 'HEMOGLOBINA GLICADA A1C')
+      .replace(/TSH/gi, 'H. TIROESTIMULANTE (TSH)')
+      .replace(/T4\s+LIBRE/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
+      .trim()
+  }
   
   // Clean reference ranges - remove extra spaces and normalize format
   if (result.valorReferencia) {
@@ -1256,6 +1347,165 @@ function normalizeLabResult(result: ComprehensiveLabResult): ComprehensiveLabRes
   }
   
   return result
+}
+
+/**
+ * 🔧 Reference stitching - attach orphaned reference ranges to previous results
+ * Scans for standalone ranges like "74-106" or "Menor a 30" and attaches them
+ */
+function stitchReferenceRanges(results: ComprehensiveLabResult[], originalText: string): ComprehensiveLabResult[] {
+  console.log('🔧 Starting reference stitching...')
+  
+  // Find results missing reference ranges
+  const resultsNeedingRanges = results.filter(r => !r.valorReferencia || r.valorReferencia.trim() === '')
+  console.log(`📋 Found ${resultsNeedingRanges.length} results missing reference ranges`)
+  
+  if (resultsNeedingRanges.length === 0) return results
+  
+  // Common reference range patterns
+  const rangePatterns = [
+    // Numeric ranges: 74-106, 0,55-4,78, <150, >60
+    /(?:^|\s)([<>]?\s*\d+(?:[,.]\d+)?\s*-\s*\d+(?:[,.]\d+)?)\s*(?:\s|$)/g,
+    
+    // Descriptive ranges: Menor a 30, Mayor a 60, Hasta 116
+    /(?:^|\s)((?:Menor a|Mayor a|Hasta)\s+\d+(?:[,.]\d+)?)\s*(?:\s|$)/gi,
+    
+    // Normal indicators: Normal: < 150, Bajo: < 40
+    /(?:^|\s)(Normal:?\s*[<>]?\s*\d+(?:[,.]\d+)?)\s*(?:\s|$)/gi,
+    
+    // Simple numeric only: just numbers that could be ranges
+    /(?:^|\s)(\d+(?:[,.]\d+)?)\s*(?:\s|$)/g
+  ]
+  
+  const lines = originalText.split('\n')
+  let attachedCount = 0
+  
+  for (const result of resultsNeedingRanges) {
+    // Find the line containing this result
+    let resultLineIndex = -1
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(result.examen) && lines[i].includes(String(result.resultado))) {
+        resultLineIndex = i
+        break
+      }
+    }
+    
+    if (resultLineIndex === -1) continue
+    
+    // Look in the next 3 lines for a reference range
+    for (let offset = 0; offset <= 3; offset++) {
+      const lineIndex = resultLineIndex + offset
+      if (lineIndex >= lines.length) break
+      
+      const line = lines[lineIndex]
+      
+      // Try each pattern
+      for (const pattern of rangePatterns) {
+        pattern.lastIndex = 0 // Reset regex
+        let match
+        const matches: RegExpExecArray[] = []
+        while ((match = pattern.exec(line)) !== null) {
+          matches.push(match)
+        }
+        
+        for (const match of matches) {
+          const potentialRange = match[1].trim()
+          
+          // Skip if it looks like a result value (has parentheses with units)
+          if (line.includes(`${potentialRange}(`)) continue
+          
+          // Skip if it's probably a result (appears with lab name)
+          if (/[A-ZÁÉÍÓÚÑ]{3,}.*\d+/.test(match[0])) continue
+          
+          // This looks like a standalone range
+          if (potentialRange.length > 1 && !result.valorReferencia) {
+            result.valorReferencia = potentialRange
+            attachedCount++
+            console.log(`🔗 Attached range "${potentialRange}" to ${result.examen}`)
+            break
+          }
+        }
+        if (result.valorReferencia) break
+      }
+      if (result.valorReferencia) break
+    }
+  }
+  
+  console.log(`🔗 Successfully attached ${attachedCount} reference ranges`)
+  return results
+}
+
+/**
+ * 🔧 Noise filtering - remove incomplete/invalid results
+ * Drops results like "EN SANGRE" or "LIBRE)" that lack proper data
+ */
+function filterNoiseResults(results: ComprehensiveLabResult[]): ComprehensiveLabResult[] {
+  console.log('🧹 Starting noise filtering...')
+  
+  const initialCount = results.length
+  
+  const filteredResults = results.filter(result => {
+    // Must have a valid exam name (not just fragments)
+    if (!result.examen || result.examen.length < 3) {
+      console.log(`❌ Dropped short exam name: "${result.examen}"`)
+      return false
+    }
+    
+    // Must have a result value
+    if (result.resultado === null || result.resultado === undefined || result.resultado === '') {
+      console.log(`❌ Dropped result without value: "${result.examen}"`)
+      return false
+    }
+    
+    // For numeric results, must have plausible numeric value
+    if (result.resultType === 'numeric') {
+      const numericValue = typeof result.resultado === 'number' ? result.resultado : parseFloat(String(result.resultado))
+      if (isNaN(numericValue)) {
+        console.log(`❌ Dropped non-numeric result: "${result.examen}" = "${result.resultado}"`)
+        return false
+      }
+    }
+    
+    // Should have a unit for numeric results (unless it's a ratio/percentage)
+    if (result.resultType === 'numeric' && !result.unidad) {
+      // Allow unitless results for ratios and percentages
+      const allowedUnitless = [
+        'CALCULO TOTAL/HDL', 'VFG', 'DENSIDAD', 'PH',
+        'EOSINOFILOS', 'BASOFILOS', 'LINFOCITOS', 'MONOCITOS', 'NEUTROFILOS'
+      ]
+      
+      if (!allowedUnitless.some(allowed => result.examen.includes(allowed))) {
+        console.log(`❌ Dropped numeric result without unit: "${result.examen}" = ${result.resultado}`)
+        return false
+      }
+    }
+    
+    // Filter obvious noise patterns
+    const noisePatterns = [
+      /^(EN SANGRE|LIBRE\)|SANGRE|TOTAL|CALCULO)$/i,
+      /^[A-Z]{1,2}$/,  // Single/double letters
+      /^\d+$/,         // Just numbers
+      /^[\(\)\[\]]+$/  // Just brackets
+    ]
+    
+    for (const pattern of noisePatterns) {
+      if (pattern.test(result.examen)) {
+        console.log(`❌ Dropped noise pattern: "${result.examen}"`)
+        return false
+      }
+    }
+    
+    // Must have reasonable confidence
+    if (result.confidence < 50) {
+      console.log(`❌ Dropped low confidence result: "${result.examen}" (${result.confidence}%)`)
+      return false
+    }
+    
+    return true
+  })
+  
+  console.log(`🧹 Noise filtering: ${initialCount} → ${filteredResults.length} (removed ${initialCount - filteredResults.length})`)
+  return filteredResults
 }
 
 /**
@@ -1321,10 +1571,18 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   const normalizedResults = results.map(result => normalizeLabResult(result))
   console.log(`🔧 Applied normalization pipeline`)
   
-  // Remove duplicates and merge results
-  const uniqueResults = removeDuplicateResults(normalizedResults)
+  // Apply reference stitching to attach orphaned ranges
+  const stitchedResults = stitchReferenceRanges(normalizedResults, cleanedText)
+  console.log(`🔗 Applied reference stitching`)
   
-  console.log(`🎯 Block-segmented extraction found ${uniqueResults.length} results`)
+  // Filter out noise and incomplete results
+  const cleanResults = filterNoiseResults(stitchedResults)
+  console.log(`🧹 Applied noise filtering`)
+  
+  // Remove duplicates with sample type context
+  const uniqueResults = removeDuplicateResults(cleanResults)
+  
+  console.log(`🎯 Enhanced extraction pipeline completed: ${uniqueResults.length} high-quality results`)
   return uniqueResults
 }
 
@@ -2507,7 +2765,9 @@ function createLabResult(params: {
 }
 
 /**
- * Remove duplicate results and keep the best one
+ * 🔧 Remove duplicate results with sample type context
+ * Keeps results separate by (exam + sample_type) to avoid inappropriate deduplication
+ * Example: "Creatinina" in SUERO vs ORINA should be kept separately
  */
 function removeDuplicateResults(results: ComprehensiveLabResult[]): ComprehensiveLabResult[] {
   const uniqueResults: ComprehensiveLabResult[] = []
@@ -2517,13 +2777,17 @@ function removeDuplicateResults(results: ComprehensiveLabResult[]): Comprehensiv
   results.sort((a, b) => b.confidence - a.confidence)
   
   for (const result of results) {
-    const normalizedExamen = result.examen.toUpperCase().trim()
+    // Create composite key: exam + sample type
+    const compositeKey = `${result.examen.toUpperCase().trim()}|${result.tipoMuestra || 'UNKNOWN'}`
     
-    if (!seenExamenes.has(normalizedExamen)) {
-      seenExamenes.add(normalizedExamen)
+    if (!seenExamenes.has(compositeKey)) {
+      seenExamenes.add(compositeKey)
       uniqueResults.push(result)
+    } else {
+      console.log(`🔄 Skipped duplicate: ${result.examen} (${result.tipoMuestra})`)
     }
   }
   
+  console.log(`🔧 Deduplication: ${results.length} → ${uniqueResults.length} results`)
   return uniqueResults
 }
