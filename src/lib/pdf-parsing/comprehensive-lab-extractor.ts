@@ -879,6 +879,11 @@ function createExactLabResult(
   // Determine confidence - 100% for exact matches
   const confidence = 100
   
+  // Calculate dynamic severity based on value vs normal range
+  const severityData = typeof parsedResultado === 'number' && format.normalRange 
+    ? calculateClinicalSeverity(parsedResultado, format.normalRange, format.unit || '') 
+    : { severity: 'desconocido', isAbnormal: false, deviationPercent: 0 }
+
   return {
     examen,
     resultado: parsedResultado,
@@ -886,11 +891,11 @@ function createExactLabResult(
     valorReferencia: format.normalRange,
     metodo: format.method,
     tipoMuestra: detectSampleTypeForResult(examen, context), // Improved sample type detection
-    isAbnormal: false, // Will be determined later by abnormal detection
-    abnormalIndicator: '',
+    isAbnormal: severityData.isAbnormal,
+    abnormalIndicator: severityData.isAbnormal ? '[*]' : '',
     systemCode,
     category: format.category,
-    priority: format.priority,
+    priority: severityData.severity,
     confidence,
     position,
     context: context.substring(0, 100),
@@ -1966,18 +1971,25 @@ function extractNumericLabFormat(
       if (!metodo && format.method) metodo = format.method
       if (!unidad && format.unit) unidad = format.unit
       
+      // Calculate dynamic severity
+      const numericResult = parseFloat(resultado.replace(',', '.'))
+      const normalRange = valorReferencia.trim() || format.normalRange || ''
+      const severityData = normalRange 
+        ? calculateClinicalSeverity(numericResult, normalRange, unidad.trim() || format.unit || '') 
+        : { severity: 'desconocido', isAbnormal: false, deviationPercent: 0 }
+
       return {
         examen: labName,
-        resultado: parseFloat(resultado.replace(',', '.')),
+        resultado: numericResult,
         unidad: unidad.trim(),
-        valorReferencia: valorReferencia.trim() || format.normalRange || '',
+        valorReferencia: normalRange,
         metodo: metodo.trim() || format.method || '',
         tipoMuestra: detectSampleType(allLines, lineIndex),
-        isAbnormal: isAbnormalResult(abnormalMarker),
-        abnormalIndicator: abnormalMarker.trim(),
+        isAbnormal: severityData.isAbnormal,
+        abnormalIndicator: severityData.isAbnormal ? '[*]' : '',
         systemCode: mapToSystemCode(labName),
         category: format.category,
-        priority: format.priority,
+        priority: severityData.severity,
         confidence: 98, // High confidence for specific format matching
         position: lineIndex,
         context: line,
@@ -2017,7 +2029,7 @@ function extractObservationLabFormat(
           abnormalIndicator: '',
           systemCode: mapToSystemCode(labName),
           category: format.category,
-          priority: format.priority,
+          priority: 'normal', // Qualitative observations are typically normal
           confidence: 98,
           position: lineIndex,
           context: line,
@@ -2041,7 +2053,7 @@ function extractObservationLabFormat(
       abnormalIndicator: '',
       systemCode: mapToSystemCode(labName),
       category: format.category,
-      priority: format.priority,
+      priority: 'normal', // Qualitative observations default to normal
       confidence: 95,
       position: lineIndex,
       context: line,
@@ -2080,7 +2092,7 @@ function extractQualitativeLabFormat(
           abnormalIndicator: expectedValue !== 'Negativo' && expectedValue !== 'No reactivo' ? '[*]' : '',
           systemCode: mapToSystemCode(labName),
           category: format.category,
-          priority: format.priority,
+          priority: 'normal', // Qualitative results default to normal
           confidence: 98,
           position: lineIndex,
           context: line,
@@ -2120,7 +2132,7 @@ function extractCalculatedLabFormat(
       abnormalIndicator: '',
       systemCode: mapToSystemCode(labName),
       category: format.category,
-      priority: format.priority,
+      priority: 'normal', // Calculated values default to normal
       confidence: 98,
       position: lineIndex,
       context: line,
@@ -2811,4 +2823,101 @@ function getAbnormalIndicator(text: string): string {
   if (text.includes('[*]')) return '[*]'
   if (text.includes('*')) return '*'
   return ''
+}
+
+/**
+ * Calculate clinical severity based on deviation from normal range
+ */
+function calculateClinicalSeverity(
+  value: number,
+  normalRange: string,
+  unit: string
+): { severity: string; isAbnormal: boolean; deviationPercent: number } {
+  
+  // Parse normal range - handle Chilean comma format
+  const normalizedRange = normalRange
+    .replace(/,/g, '.')  // Convert Chilean comma to decimal point
+    .replace(/\s+/g, ' ')
+    .trim()
+  
+  // Extract min and max values from range patterns
+  let minValue: number | null = null
+  let maxValue: number | null = null
+  
+  // Pattern: "0.3-1.2" or "74-106"
+  const rangeMatch = normalizedRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/)
+  if (rangeMatch) {
+    minValue = parseFloat(rangeMatch[1])
+    maxValue = parseFloat(rangeMatch[2])
+  }
+  
+  // Pattern: "Menor a 30" or "< 30"
+  const lessThanMatch = normalizedRange.match(/(?:Menor\s+a|<)\s*(\d+(?:\.\d+)?)/)
+  if (lessThanMatch) {
+    maxValue = parseFloat(lessThanMatch[1])
+  }
+  
+  // Pattern: "Mayor a 60" or "> 60"
+  const greaterThanMatch = normalizedRange.match(/(?:Mayor\s+a|>)\s*(\d+(?:\.\d+)?)/)
+  if (greaterThanMatch) {
+    minValue = parseFloat(greaterThanMatch[1])
+  }
+  
+  // Pattern: "Hasta 34"
+  const upToMatch = normalizedRange.match(/Hasta\s+(\d+(?:\.\d+)?)/)
+  if (upToMatch) {
+    maxValue = parseFloat(upToMatch[1])
+  }
+  
+  // If we couldn't parse the range, return unknown
+  if (minValue === null && maxValue === null) {
+    return {
+      severity: 'desconocido',
+      isAbnormal: false,
+      deviationPercent: 0
+    }
+  }
+  
+  // Check if value is within normal range
+  const isWithinRange = (minValue === null || value >= minValue) && 
+                       (maxValue === null || value <= maxValue)
+  
+  if (isWithinRange) {
+    return {
+      severity: 'normal',
+      isAbnormal: false,
+      deviationPercent: 0
+    }
+  }
+  
+  // Calculate deviation percentage
+  let deviationPercent = 0
+  
+  if (maxValue !== null && value > maxValue) {
+    // Value above normal range
+    const deviation = value - maxValue
+    const range = maxValue - (minValue || 0)
+    deviationPercent = range > 0 ? (deviation / range) * 100 : 100
+  } else if (minValue !== null && value < minValue) {
+    // Value below normal range  
+    const deviation = minValue - value
+    const range = (maxValue || minValue) - minValue
+    deviationPercent = range > 0 ? (deviation / range) * 100 : 100
+  }
+  
+  // Classify severity based on deviation percentage
+  let severity = 'leve'
+  if (deviationPercent > 200) {
+    severity = 'crítico'
+  } else if (deviationPercent > 75) {
+    severity = 'severo'
+  } else if (deviationPercent > 25) {
+    severity = 'moderado'
+  }
+  
+  return {
+    severity,
+    isAbnormal: true,
+    deviationPercent: Math.round(deviationPercent)
+  }
 }
