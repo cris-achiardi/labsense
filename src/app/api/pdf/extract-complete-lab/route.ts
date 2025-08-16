@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Use comprehensive extractor for maximum lab result coverage
-    const comprehensiveResults = extractAllLabResults(textExtraction.fullText)
+    // Use comprehensive extractor for maximum lab result coverage with page-aware cleaning
+    const comprehensiveResults = extractAllLabResults(textExtraction.fullText, textExtraction.pages)
     console.log(`🎯 Comprehensive extractor found ${comprehensiveResults.length} results`)
     
     // Also get patient info and metadata from the original extractor

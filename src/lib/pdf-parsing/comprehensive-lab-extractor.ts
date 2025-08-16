@@ -24,16 +24,19 @@ export interface ComprehensiveLabResult {
 }
 
 /**
- * Extract ALL lab results from Chilean PDF text
+ * Extract ALL lab results from Chilean PDF text with page-aware processing
  */
-export function extractAllLabResults(text: string): ComprehensiveLabResult[] {
+export function extractAllLabResults(text: string, pages?: string[]): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   const healthMarkerLookup = createHealthMarkerLookup()
   
   console.log('🔍 Starting comprehensive lab extraction...')
   
+  // Clean header/footer contamination first
+  const cleanedText = cleanHeaderFooterContamination(text, pages)
+  
   // Split text into sections by equipment/sample type separators
-  const sections = text.split(/_{50,}/)
+  const sections = cleanedText.split(/_{50,}/)
   
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
@@ -353,8 +356,11 @@ function extractEmbeddedMultiResults(
     // Blood count embedded results: HEMATOCRITO42,0(%) 35-47 HEMOGLOBINA14,2(g/dL) 12,3-15,3
     /(HEMATOCRITO|HEMOGLOBINA|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS [A-Z]+)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\.,\s<>]+)?/gi,
     
-    // Lipid panel: COLESTEROL TOTAL213(mg/dL)Bajo (deseable): < 200 COLESTEROL HDL53(mg/dL)
-    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|COLESTEROL VLDL|TRIGLICERIDOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*?)(?=[A-Z]{2,}|$)/gi,
+    // Enhanced lipid panel with cleaner extraction: COLESTEROL TOTAL213(mg/dL)Bajo (deseable): < 200
+    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL \(CALCULO\)|COLESTEROL VLDL \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^C]*?)(?=COLESTEROL|$)/gi,
+    
+    // Cholesterol calculation ratio: CALCULO TOTAL/HDL4,02
+    /(CALCULO TOTAL\/HDL)(\d+(?:,\d+)?(?:\.\d+)?)(?:\s|$)/gi,
     
     // Blood differential: EOSINOFILOS3(%) 2-4 BASOFILOS1(%) 0-1 LINFOCITOS32(%)
     /(EOSINOFILOS|BASOFILOS|LINFOCITOS|MONOCITOS|NEUTROFILOS|BACILIFORMES|JUVENILES|MIELOCITOS|PROMIELOCITOS|BLASTOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\s]*)?/gi,
@@ -362,11 +368,11 @@ function extractEmbeddedMultiResults(
     // Electrolytes: SODIO (Na) EN SANGRE136,7(mEq/L) 136-145 POTASIO (K) EN SANGRE5,0(mEq/L)
     /(SODIO|POTASIO|CLORO)\s*(?:\([^)]+\))?\s*EN SANGRE(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\s,\.]*)?/gi,
     
-    // Calculated values: CALCULO TOTAL/HDL4,02  COLESTEROL VLDL (CALCULO)27,2(mg/dL)
-    /(CALCULO [A-Z\/]+|[A-Z\s]+ \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([^A-Z]*)?/gi,
-    
     // Kidney function: VFG64,4(mL/min/1.73 mt²) Mayor a 60 UREMIA (CALCULO)38,5(mg/dL)
-    /(VFG|UREMIA \(CALCULO\)|CREATINURIA [A-Z]+|MAU-RAC \(calculo\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([^A-Z]*)?/gi
+    /(VFG|UREMIA \(CALCULO\)|CREATINURIA [A-Z]+|MAU-RAC \(calculo\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([^A-Z]*)?/gi,
+    
+    // HbA1c and glycated hemoglobin patterns (critical for diabetes!)
+    /(HEMOGLOBINA GLICOSILADA|HBA1C|Hb A1c)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi
   ]
   
   for (const pattern of embeddedPatterns) {
@@ -378,9 +384,16 @@ function extractEmbeddedMultiResults(
       
       // Clean and parse values
       const cleanExamen = examen.replace(/\(CALCULO\)/, '').trim()
-      const cleanResultado = parseFloat(resultado.replace(',', '.'))
-      const cleanUnidad = unidad.trim()
-      const cleanReferencia = valorReferencia.trim()
+      let cleanResultado: number | string = parseFloat(resultado.replace(',', '.'))
+      let cleanUnidad = unidad ? unidad.trim() : ''
+      let cleanReferencia = valorReferencia ? valorReferencia.trim() : ''
+      
+      // Special handling for CALCULO TOTAL/HDL pattern (no unit in parentheses)
+      if (examen.includes('CALCULO TOTAL/HDL')) {
+        cleanResultado = parseFloat(resultado.replace(',', '.'))
+        cleanUnidad = 'ratio'
+        cleanReferencia = ''
+      }
       
       const labResult = createLabResult({
         examen: cleanExamen,
@@ -403,6 +416,43 @@ function extractEmbeddedMultiResults(
   }
   
   return results
+}
+
+/**
+ * Clean header/footer contamination from multi-page PDFs
+ */
+function cleanHeaderFooterContamination(text: string, pages?: string[]): string {
+  let cleanedText = text
+  
+  // Common header/footer patterns to remove
+  const contaminationPatterns = [
+    // Patient info repeated on every page
+    /RUT\s*:\s*7\.236\.426-0\s+Folio\s*:\s*394499\s+Profesional Solicitante:\s*:\s*STEVENSON JEAN SIMON\s+Nombre\s*:\s*ISABEL DEL ROSARIO BOLADOS VEGA\s+Sexo\s*:\s*Femenino\s+Edad\s*:\s*73a 3m 17d\s+Fecha de Ingreso\s*:\s*15\/10\/2024 8:29:49\s+Toma de Muestra\s*:\s*15\/10\/2024 8:29:49\s+Fecha de Validación\s*:\s*[^\s]+\s+Procedencia\s*:\s*CESFAM QUEBRADA VERDE/g,
+    
+    // Lab address repeated on every page
+    /LABORATORIO CLÍNICO CORPORACIÓN MUNICIPAL VALPARAISO\s+Calle Washington #32, tercer piso, Valparaiso/g,
+    
+    // Reception date repeated multiple times
+    /Fecha de Recepción en el Laboratorio:\s*15\/10\/2024\s+[\d:]+/g,
+    
+    // Generic patient info pattern (for any patient)
+    /RUT\s*:\s*[\d\.-]+\s+Folio\s*:\s*\d+\s+Profesional Solicitante:\s*:\s*[^F]+Fecha de Ingreso[^P]+Procedencia\s*:\s*[A-ZÁÉÍÓÚÑ\s]+/g,
+    
+    // Generic lab address
+    /LABORATORIO CLÍNICO CORPORACIÓN MUNICIPAL[^F]*?Valparaiso/g
+  ]
+  
+  // Remove contamination patterns
+  for (const pattern of contaminationPatterns) {
+    cleanedText = cleanedText.replace(pattern, ' ')
+  }
+  
+  // Clean up multiple spaces and normalize
+  cleanedText = cleanedText.replace(/\s{3,}/g, ' ').trim()
+  
+  console.log(`🧹 Cleaned ${text.length - cleanedText.length} characters of header/footer contamination`)
+  
+  return cleanedText
 }
 
 /**
