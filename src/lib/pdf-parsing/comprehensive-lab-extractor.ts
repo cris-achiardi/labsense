@@ -24,38 +24,37 @@ export interface ComprehensiveLabResult {
 }
 
 /**
- * Extract ALL lab results from Chilean PDF text with page-aware processing
+ * Extract ALL lab results from Chilean PDF text with group-aware 5-column parsing
  */
 export function extractAllLabResults(text: string, pages?: string[]): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   const healthMarkerLookup = createHealthMarkerLookup()
   
-  console.log('🔍 Starting comprehensive lab extraction...')
+  console.log('🔍 Starting comprehensive lab extraction with group-aware parsing...')
   
   // Clean header/footer contamination first
   const cleanedText = cleanHeaderFooterContamination(text, pages)
   
-  // Split text into sections by equipment/sample type separators
-  const sections = cleanedText.split(/_{50,}/)
+  // New approach: Group-aware 5-column parsing
+  const groupResults = extractLabsByGroupStructure(cleanedText, healthMarkerLookup)
+  console.log(`📊 Group-aware parser found ${groupResults.length} results`)
   
+  // Fallback: Legacy extraction strategies for any missed results
+  const sections = cleanedText.split(/_{50,}/)
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
-    
-    // Extract sample type information
     const tipoMuestra = extractSampleType(section)
     
-    // Try multiple extraction strategies for this section
-    const sectionResults = [
-      ...extractNumericResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractCalculatedResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractMicroscopyResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractTabularResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractEmbeddedMultiResults(section, healthMarkerLookup, tipoMuestra)
+    const fallbackResults = [
+      ...extractEmbeddedMultiResults(section, healthMarkerLookup, tipoMuestra),
+      ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra)
     ]
     
-    results.push(...sectionResults)
+    results.push(...fallbackResults)
   }
+  
+  // Combine group results with fallback results
+  results.push(...groupResults)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
@@ -335,6 +334,190 @@ function extractTabularResults(
       
       results.push(labResult)
     }
+  }
+  
+  return results
+}
+
+/**
+ * Extract labs using Chilean 5-column group structure
+ * LAB NAME | Result | Unit | Normal Range | Method
+ */
+function extractLabsByGroupStructure(
+  text: string, 
+  healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  // Known lab group headers in Chilean reports
+  const labGroups = [
+    'ELECTROLITOS PLASMATICOS',
+    'PERFIL LIPIDICO', 
+    'HEMOGRAMA - VHS',
+    'ORINA COMPLETA',
+    'SEDIMENTO DE ORINA',
+    'PERFIL BIOQUIMICO',
+    'FUNCION HEPATICA',
+    'FUNCION RENAL',
+    'PERFIL TIROIDEO'
+  ]
+  
+  // Split text into lines for processing
+  const lines = text.split('\n')
+  let currentSampleType = 'SUERO' // Default
+  let currentGroup = ''
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line || line.length < 3) continue
+    
+    // Check for sample type
+    const sampleMatch = line.match(/Tipo de Muestra\s*:\s*([A-Z\s\.+]+)/)
+    if (sampleMatch) {
+      currentSampleType = sampleMatch[1].trim()
+      console.log(`📋 Found sample type: ${currentSampleType}`)
+      continue
+    }
+    
+    // Check for lab group headers
+    const groupMatch = labGroups.find(group => line.includes(group))
+    if (groupMatch) {
+      currentGroup = groupMatch
+      console.log(`📊 Found lab group: ${currentGroup}`)
+      continue
+    }
+    
+    // Check if line starts with ALL-CAPS lab name (main pattern)
+    const labMatch = line.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,50})\s+(.*)$/)
+    if (labMatch && isAllCapsLabName(labMatch[1])) {
+      const [, labName, restOfLine] = labMatch
+      
+      // Parse the 5-column structure: Result | Unit | Normal Range | Method
+      const labResult = parse5ColumnStructure(labName.trim(), restOfLine, currentSampleType, healthMarkerLookup, i, line)
+      
+      if (labResult) {
+        console.log(`✅ Extracted 5-column: ${labResult.examen} = ${labResult.resultado}`)
+        results.push(labResult)
+      }
+    }
+    
+    // Also look for embedded labs in normal range fields (like TRIGLICERIDOS example)
+    if (line.includes('(mg/dL)') || line.includes('(%)') || line.includes('(U/L)')) {
+      const embeddedResults = extractEmbeddedFromLine(line, currentSampleType, healthMarkerLookup, i)
+      results.push(...embeddedResults)
+    }
+  }
+  
+  return results
+}
+
+/**
+ * Check if text is an ALL-CAPS lab name
+ */
+function isAllCapsLabName(text: string): boolean {
+  // Must be mostly uppercase letters, can have spaces, dots, parentheses, hyphens
+  const cleanText = text.replace(/[\s\.\(\)\/\-]/g, '')
+  if (cleanText.length < 3) return false
+  
+  const uppercaseCount = (cleanText.match(/[A-ZÁÉÍÓÚÑ]/g) || []).length
+  const totalLetters = (cleanText.match(/[A-ZÁÉÍÓÚÑa-záéíóúñ]/g) || []).length
+  
+  // At least 80% uppercase letters
+  return totalLetters > 0 && (uppercaseCount / totalLetters) >= 0.8
+}
+
+/**
+ * Parse Chilean 5-column lab structure: Result | Unit | Normal Range | Method
+ */
+function parse5ColumnStructure(
+  labName: string,
+  restOfLine: string,
+  sampleType: string,
+  healthMarkerLookup: Map<string, HealthMarkerMapping>,
+  lineIndex: number,
+  fullLine: string
+): ComprehensiveLabResult | null {
+  
+  // Pattern to match: RESULT (UNIT) [*] NORMAL_RANGE METHOD
+  const patterns = [
+    // Standard: 269 (mg/dL) [ * ] 74 - 106 Hexoquinasa
+    /^(\d+(?:,\d+)?(?:\.\d+)?)\s*\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].{3,}))?$/,
+    
+    // Compact: 269(mg/dL)[ * ] 74-106 Hexoquinasa  
+    /^(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].{3,}))?$/,
+    
+    // Spaced: 269    (mg/dL)    [ * ] 74 - 106    Hexoquinasa
+    /^(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s{2,}([A-Za-z].{3,}))?$/
+  ]
+  
+  for (const pattern of patterns) {
+    const match = restOfLine.match(pattern)
+    if (match) {
+      const [, resultado, unidad, abnormalMarker = '', valorReferencia, metodo = ''] = match
+      
+      // Clean values
+      const cleanResultado = parseFloat(resultado.replace(',', '.'))
+      const cleanUnidad = unidad.trim()
+      const cleanReferencia = valorReferencia.trim()
+      const cleanMetodo = metodo.trim()
+      const isAbnormal = abnormalMarker.includes('*')
+      
+      return createLabResult({
+        examen: labName,
+        resultado: cleanResultado,
+        unidad: cleanUnidad,
+        valorReferencia: cleanReferencia || null,
+        metodo: cleanMetodo || null,
+        tipoMuestra: sampleType,
+        isAbnormal,
+        abnormalIndicator: abnormalMarker.trim(),
+        resultType: 'numeric',
+        confidence: 95,
+        position: lineIndex,
+        context: fullLine,
+        healthMarkerLookup
+      })
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Extract embedded labs from a single line (like the TRIGLICERIDOS example)
+ */
+function extractEmbeddedFromLine(
+  line: string,
+  sampleType: string, 
+  healthMarkerLookup: Map<string, HealthMarkerMapping>,
+  lineIndex: number
+): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  // Pattern for embedded results: COLESTEROL TOTAL213(mg/dL)
+  const embeddedPattern = /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\(\)]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)/g
+  
+  let match
+  while ((match = embeddedPattern.exec(line)) !== null) {
+    const [fullMatch, examen, resultado, unidad] = match
+    
+    const labResult = createLabResult({
+      examen: examen.trim(),
+      resultado: parseFloat(resultado.replace(',', '.')),
+      unidad: unidad.trim(),
+      valorReferencia: null,
+      metodo: null,
+      tipoMuestra: sampleType,
+      isAbnormal: line.includes('[*]') || line.includes('[ * ]'),
+      abnormalIndicator: line.includes('[*]') ? '[*]' : '',
+      resultType: 'numeric',
+      confidence: 90,
+      position: lineIndex,
+      context: fullMatch,
+      healthMarkerLookup
+    })
+    
+    results.push(labResult)
   }
   
   return results
