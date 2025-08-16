@@ -40,21 +40,28 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   console.log(`📊 Group-aware parser found ${groupResults.length} results`)
   
   // Fallback: Legacy extraction strategies for any missed results
+  console.log(`🔄 Running fallback extractors to catch missed labs...`)
   const sections = cleanedText.split(/_{50,}/)
   for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
     const section = sections[sectionIndex]
     const tipoMuestra = extractSampleType(section)
     
     const fallbackResults = [
+      ...extractNumericResults(section, healthMarkerLookup, tipoMuestra),
       ...extractEmbeddedMultiResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra)
+      ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra),
+      ...extractCalculatedResults(section, healthMarkerLookup, tipoMuestra),
+      ...extractMicroscopyResults(section, healthMarkerLookup, tipoMuestra),
+      ...extractTabularResults(section, healthMarkerLookup, tipoMuestra)
     ]
     
     results.push(...fallbackResults)
   }
+  console.log(`📊 Fallback extractors found ${results.length} additional results`)
   
   // Combine group results with fallback results
   results.push(...groupResults)
+  console.log(`🎯 Total before deduplication: ${results.length} results`)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
@@ -387,13 +394,31 @@ function extractLabsByGroupStructure(
       continue
     }
     
-    // Check if line starts with ALL-CAPS lab name (main pattern)
-    const labMatch = line.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,50})\s+(.*)$/)
-    if (labMatch && isAllCapsLabName(labMatch[1])) {
-      const [, labName, restOfLine] = labMatch
-      
+    // Check if line starts with ALL-CAPS lab name (handle connected words)
+    // Pattern 1: Normal spacing - GLICEMIA EN AYUNO (BASAL) 269 (mg/dL)
+    const normalMatch = line.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,50})\s+(.*)$/)
+    
+    // Pattern 2: Connected words - GLICEMIA EN AYUNO (BASAL)269(mg/dL) 
+    const connectedMatch = line.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,50})(\d+(?:,\d+)?(?:\.\d+)?.*)$/)
+    
+    let labMatch = null
+    let labName = ''
+    let restOfLine = ''
+    
+    if (normalMatch && isAllCapsLabName(normalMatch[1])) {
+      labMatch = normalMatch
+      labName = normalMatch[1].trim()
+      restOfLine = normalMatch[2]
+    } else if (connectedMatch && isAllCapsLabName(connectedMatch[1])) {
+      labMatch = connectedMatch
+      labName = connectedMatch[1].trim()
+      restOfLine = connectedMatch[2] // This starts with the number
+      console.log(`🔗 Found connected words: "${labName}" + "${restOfLine}"`)
+    }
+    
+    if (labMatch) {
       // Parse the 5-column structure: Result | Unit | Normal Range | Method
-      const labResult = parse5ColumnStructure(labName.trim(), restOfLine, currentSampleType, healthMarkerLookup, i, line)
+      const labResult = parse5ColumnStructure(labName, restOfLine, currentSampleType, healthMarkerLookup, i, line)
       
       if (labResult) {
         console.log(`✅ Extracted 5-column: ${labResult.examen} = ${labResult.resultado}`)
@@ -443,11 +468,14 @@ function parse5ColumnStructure(
     // Standard: 269 (mg/dL) [ * ] 74 - 106 Hexoquinasa
     /^(\d+(?:,\d+)?(?:\.\d+)?)\s*\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].{3,}))?$/,
     
-    // Compact: 269(mg/dL)[ * ] 74-106 Hexoquinasa  
+    // Compact connected: 269(mg/dL)[ * ] 74-106 Hexoquinasa  
     /^(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].{3,}))?$/,
     
     // Spaced: 269    (mg/dL)    [ * ] 74 - 106    Hexoquinasa
-    /^(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s{2,}([A-Za-z].{3,}))?$/
+    /^(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s{2,}([A-Za-z].{3,}))?$/,
+    
+    // Connected start - handles when restOfLine starts directly with number: 269(mg/dL)[*]74-106 Hexoquinasa
+    /^(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(\[?\s?\*?\s?\]?)(.+?)$/
   ]
   
   for (const pattern of patterns) {
