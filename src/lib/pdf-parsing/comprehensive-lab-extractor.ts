@@ -703,6 +703,178 @@ export interface ComprehensiveLabResult {
 }
 
 /**
+ * Simplified LAB NAME + RESULT extraction
+ * Focus on extracting just lab names and results, populate units/ranges/methods from database later
+ * This handles embedded results in contaminated valor referencia fields like TRIGLICERIDOS
+ */
+function extractLabNamesAndResults(
+  text: string, 
+  healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  console.log('🎯 Starting simplified LAB NAME + RESULT extraction...')
+  
+  // Comprehensive patterns for LAB NAME + RESULT extraction
+  const labNameResultPatterns = [
+    // Pattern 1: Standard ALL-CAPS lab with number: GLICEMIA EN AYUNO (BASAL) 269
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s+(\d+(?:,\d+)?(?:\.\d+)?)/g,
+    
+    // Pattern 2: Connected words: GLICEMIA EN AYUNO (BASAL)269
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})(\d+(?:,\d+)?(?:\.\d+)?)/g,
+    
+    // Pattern 3: Embedded in contaminated fields: COLESTEROL TOTAL213
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)/g,
+    
+    // Pattern 4: With units included: HEMOGLOBINA14,2(g/dL) - extract without unit
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})(\d+(?:,\d+)?(?:\.\d+)?)\([^)]+\)/g,
+    
+    // Pattern 5: Qualitative results: R.P.R. No reactivo
+    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,40})\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante)/g,
+    
+    // Pattern 6: Calculated ratios: CALCULO TOTAL/HDL 4,02
+    /(CALCULO TOTAL\/HDL|VFG|UREMIA \(CALCULO\)|MAU-RAC \(calculo\))\s+(\d+(?:,\d+)?(?:\.\d+)?)/g,
+    
+    // Pattern 7: Blood differential percentages: EOSINOFILOS 3
+    /(EOSINOFILOS|BASOFILOS|LINFOCITOS|MONOCITOS|NEUTROFILOS|BACILIFORMES|JUVENILES|MIELOCITOS|PROMIELOCITOS|BLASTOS)\s*(\d+(?:,\d+)?(?:\.\d+)?)/g,
+    
+    // Pattern 8: Microscopy ranges: HEMATIES POR CAMPO 0-2
+    /(HEMATIES POR CAMPO|LEUCOCITOS POR CAMPO)\s+(\d+\s*-\s*\d+)/g,
+    
+    // Pattern 9: Simple observations: COLOR Amarillo, ASPECTO Claro
+    /(COLOR|ASPECTO|MUCUS|CRISTALES|CILINDROS|BACTERIAS|CELULAS EPITELIALES)\s+(Amarillo|Claro|Turbio|Escasa cantidad|No se observan|Abundante|Moderada cantidad|Presentes|Ausentes|Uratos amorfos)/g
+  ]
+  
+  // Extract using all patterns
+  for (const [patternIndex, pattern] of labNameResultPatterns.entries()) {
+    let match
+    while ((match = pattern.exec(text)) !== null) {
+      const [fullMatch, examen, resultado] = match
+      
+      // Skip if already extracted
+      if (isAlreadyExtracted(results, examen)) continue
+      
+      // Skip invalid lab names (too short, common words, etc.)
+      if (!isValidLabName(examen)) continue
+      
+      // Create simplified lab result with database lookup for metadata
+      const labResult = createSimplifiedLabResult(
+        examen.trim(),
+        resultado.trim(),
+        healthMarkerLookup,
+        patternIndex,
+        fullMatch,
+        text.indexOf(fullMatch)
+      )
+      
+      if (labResult) {
+        console.log(`✅ Simplified extraction: ${labResult.examen} = ${labResult.resultado}`)
+        results.push(labResult)
+      }
+    }
+  }
+  
+  console.log(`🎯 Simplified extraction found ${results.length} LAB NAME + RESULT pairs`)
+  return results
+}
+
+/**
+ * Check if a lab name is valid
+ */
+function isValidLabName(name: string): boolean {
+  const cleanName = name.trim().toUpperCase()
+  
+  // Must be at least 3 characters
+  if (cleanName.length < 3) return false
+  
+  // Skip common non-lab words
+  const skipWords = [
+    'FECHA', 'FOLIO', 'NOMBRE', 'EDAD', 'SEXO', 'RUT', 'LABORATORIO',
+    'TIPO', 'MUESTRA', 'METODO', 'EXAMEN', 'RESULTADO', 'UNIDAD',
+    'VALOR', 'REFERENCIA', 'PROFESIONAL', 'PROCEDENCIA', 'VALIDACION'
+  ]
+  
+  for (const skipWord of skipWords) {
+    if (cleanName.includes(skipWord)) return false
+  }
+  
+  // Must contain mostly uppercase letters (Chilean lab names are ALL-CAPS)
+  const letters = cleanName.replace(/[\s\.\(\)\/\-\d]/g, '')
+  if (letters.length < 3) return false
+  
+  const uppercaseCount = (letters.match(/[A-ZÁÉÍÓÚÑ]/g) || []).length
+  return (uppercaseCount / letters.length) >= 0.7 // At least 70% uppercase
+}
+
+/**
+ * Create simplified lab result with database lookup for metadata
+ */
+function createSimplifiedLabResult(
+  examen: string,
+  resultado: string,
+  healthMarkerLookup: Map<string, HealthMarkerMapping>,
+  patternIndex: number,
+  context: string,
+  position: number
+): ComprehensiveLabResult | null {
+  
+  // Parse result value
+  let parsedResultado: string | number = resultado
+  if (/^\d+(?:,\d+)?(?:\.\d+)?$/.test(resultado)) {
+    parsedResultado = parseFloat(resultado.replace(',', '.'))
+  }
+  
+  // Lookup lab format from comprehensive database
+  const format = CHILEAN_LAB_FORMATS[examen]
+  
+  // Map to health marker for system code
+  let systemCode: string | null = null
+  let category: string = 'other'
+  let priority: string = 'low'
+  
+  const upperExamen = examen.toUpperCase()
+  const markerEntries = Array.from(healthMarkerLookup.entries())
+  
+  for (const [searchTerm, marker] of markerEntries) {
+    if (upperExamen.includes(searchTerm) || searchTerm.includes(upperExamen)) {
+      systemCode = marker.systemCode
+      category = marker.category
+      priority = marker.priority
+      break
+    }
+  }
+  
+  // Use format data if available, otherwise defaults
+  const unidad = format?.unit || null
+  const valorReferencia = format?.normalRange || null
+  const metodo = format?.method || null
+  const resultType = format?.type || (typeof parsedResultado === 'number' ? 'numeric' : 'qualitative')
+  
+  // Determine confidence based on pattern and database match
+  let confidence = 85 // Base confidence for simplified extraction
+  if (format) confidence += 10 // Boost for known lab format
+  if (systemCode) confidence += 5 // Boost for health marker mapping
+  
+  return {
+    examen,
+    resultado: parsedResultado,
+    unidad,
+    valorReferencia,
+    metodo,
+    tipoMuestra: 'SUERO', // Default, will be updated by sample type detection
+    isAbnormal: false, // Will be determined later by abnormal detection
+    abnormalIndicator: '',
+    systemCode,
+    category: format?.category || category,
+    priority: format?.priority || priority,
+    confidence,
+    position,
+    context: context.substring(0, 100),
+    resultType: resultType as any
+  }
+}
+
+/**
  * Extract ALL lab results from Chilean PDF text with group-aware 5-column parsing
  */
 export function extractAllLabResults(text: string, pages?: string[]): ComprehensiveLabResult[] {
@@ -714,9 +886,9 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   // Clean header/footer contamination first
   const cleanedText = cleanHeaderFooterContamination(text, pages)
   
-  // Primary approach: Lab-specific format extraction
-  const labSpecificResults = extractLabsWithSpecificFormats(cleanedText)
-  console.log(`🎯 Lab-specific parser found ${labSpecificResults.length} results`)
+  // Primary approach: Simplified LAB NAME + RESULT extraction
+  const simplifiedResults = extractLabNamesAndResults(cleanedText, healthMarkerLookup)
+  console.log(`🎯 Simplified parser found ${simplifiedResults.length} results`)
   
   // Secondary approach: Group-aware 5-column parsing for remaining labs
   const groupResults = extractLabsByGroupStructure(cleanedText, healthMarkerLookup)
@@ -743,9 +915,9 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   console.log(`📊 Fallback extractors found ${results.length} additional results`)
   
   // Combine all extraction approaches
-  results.push(...labSpecificResults)
+  results.push(...simplifiedResults)
   results.push(...groupResults)
-  console.log(`🎯 Total before deduplication: ${results.length} results (${labSpecificResults.length} specific + ${groupResults.length} group + ${results.length - labSpecificResults.length - groupResults.length} fallback)`)
+  console.log(`🎯 Total before deduplication: ${results.length} results (${simplifiedResults.length} simplified + ${groupResults.length} group + ${results.length - simplifiedResults.length - groupResults.length} fallback)`)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
