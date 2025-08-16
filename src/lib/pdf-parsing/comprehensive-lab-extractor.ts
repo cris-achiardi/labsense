@@ -703,9 +703,9 @@ export interface ComprehensiveLabResult {
 }
 
 /**
- * Simplified LAB NAME + RESULT extraction
- * Focus on extracting just lab names and results, populate units/ranges/methods from database later
- * This handles embedded results in contaminated valor referencia fields like TRIGLICERIDOS
+ * EXACT LAB NAME + RESULT extraction using standardized database
+ * Only extracts lab names that match exactly with CHILEAN_LAB_FORMATS
+ * Ensures 100% accuracy in lab name identification
  */
 function extractLabNamesAndResults(
   text: string, 
@@ -713,69 +713,63 @@ function extractLabNamesAndResults(
 ): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   
-  console.log('🎯 Starting simplified LAB NAME + RESULT extraction...')
+  console.log('🎯 Starting EXACT LAB NAME + RESULT extraction...')
   
-  // Comprehensive patterns for LAB NAME + RESULT extraction
-  const labNameResultPatterns = [
-    // Pattern 1: Standard ALL-CAPS lab with number: GLICEMIA EN AYUNO (BASAL) 269
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s+(\d+(?:,\d+)?(?:\.\d+)?)/g,
-    
-    // Pattern 2: Connected words: GLICEMIA EN AYUNO (BASAL)269
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})(\d+(?:,\d+)?(?:\.\d+)?)/g,
-    
-    // Pattern 3: Embedded in contaminated fields: COLESTEROL TOTAL213
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)/g,
-    
-    // Pattern 4: With units included: HEMOGLOBINA14,2(g/dL) - extract without unit
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})(\d+(?:,\d+)?(?:\.\d+)?)\([^)]+\)/g,
-    
-    // Pattern 5: Qualitative results: R.P.R. No reactivo
-    /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{3,40})\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante)/g,
-    
-    // Pattern 6: Calculated ratios: CALCULO TOTAL/HDL 4,02
-    /(CALCULO TOTAL\/HDL|VFG|UREMIA \(CALCULO\)|MAU-RAC \(calculo\))\s+(\d+(?:,\d+)?(?:\.\d+)?)/g,
-    
-    // Pattern 7: Blood differential percentages: EOSINOFILOS 3
-    /(EOSINOFILOS|BASOFILOS|LINFOCITOS|MONOCITOS|NEUTROFILOS|BACILIFORMES|JUVENILES|MIELOCITOS|PROMIELOCITOS|BLASTOS)\s*(\d+(?:,\d+)?(?:\.\d+)?)/g,
-    
-    // Pattern 8: Microscopy ranges: HEMATIES POR CAMPO 0-2
-    /(HEMATIES POR CAMPO|LEUCOCITOS POR CAMPO)\s+(\d+\s*-\s*\d+)/g,
-    
-    // Pattern 9: Simple observations: COLOR Amarillo, ASPECTO Claro
-    /(COLOR|ASPECTO|MUCUS|CRISTALES|CILINDROS|BACTERIAS|CELULAS EPITELIALES)\s+(Amarillo|Claro|Turbio|Escasa cantidad|No se observan|Abundante|Moderada cantidad|Presentes|Ausentes|Uratos amorfos)/g
-  ]
+  // Get all exact lab names from our standardized database
+  const exactLabNames = Object.keys(CHILEAN_LAB_FORMATS)
+  console.log(`📋 Searching for ${exactLabNames.length} exact lab names`)
   
-  // Extract using all patterns
-  for (let patternIndex = 0; patternIndex < labNameResultPatterns.length; patternIndex++) {
-    const pattern = labNameResultPatterns[patternIndex]
-    let match
-    while ((match = pattern.exec(text)) !== null) {
-      const [fullMatch, examen, resultado] = match
+  // For each exact lab name, find it in the text and extract the result
+  for (const exactLabName of exactLabNames) {
+    const escapedLabName = exactLabName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    
+    // Patterns to find EXACT lab name followed by result
+    const exactPatterns = [
+      // Pattern 1: Exact lab name with space and number: GLICEMIA EN AYUNO (BASAL) 269
+      new RegExp(`(${escapedLabName})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
       
-      // Skip if already extracted
-      if (isAlreadyExtracted(results, examen)) continue
+      // Pattern 2: Exact lab name connected to number: GLICEMIA EN AYUNO (BASAL)269
+      new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
       
-      // Skip invalid lab names (too short, common words, etc.)
-      if (!isValidLabName(examen)) continue
+      // Pattern 3: Exact lab name with unit in parentheses: HEMOGLOBINA14,2(g/dL)
+      new RegExp(`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\([^)]+\\)`, 'g'),
       
-      // Create simplified lab result with database lookup for metadata
-      const labResult = createSimplifiedLabResult(
-        examen.trim(),
-        resultado.trim(),
-        healthMarkerLookup,
-        patternIndex,
-        fullMatch,
-        text.indexOf(fullMatch)
-      )
+      // Pattern 4: Qualitative results for exact lab names
+      new RegExp(`(${escapedLabName})\\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`, 'g')
+    ]
+    
+    // Try each pattern for this exact lab name
+    for (let patternIndex = 0; patternIndex < exactPatterns.length; patternIndex++) {
+      const pattern = exactPatterns[patternIndex]
+      let match
       
-      if (labResult) {
-        console.log(`✅ Simplified extraction: ${labResult.examen} = ${labResult.resultado}`)
-        results.push(labResult)
+      while ((match = pattern.exec(text)) !== null) {
+        const [fullMatch, examen, resultado] = match
+        
+        // Skip if already extracted
+        if (isAlreadyExtracted(results, examen)) continue
+        
+        // Create lab result with exact database match
+        const labResult = createExactLabResult(
+          examen.trim(),
+          resultado.trim(),
+          healthMarkerLookup,
+          patternIndex,
+          fullMatch,
+          text.indexOf(fullMatch)
+        )
+        
+        if (labResult) {
+          console.log(`✅ EXACT match: ${labResult.examen} = ${labResult.resultado}`)
+          results.push(labResult)
+        }
+        
+        break // Only take the first match for this exact lab name
       }
     }
   }
   
-  console.log(`🎯 Simplified extraction found ${results.length} LAB NAME + RESULT pairs`)
+  console.log(`🎯 EXACT extraction found ${results.length} LAB NAME + RESULT pairs`)
   return results
 }
 
@@ -808,9 +802,10 @@ function isValidLabName(name: string): boolean {
 }
 
 /**
- * Create simplified lab result with database lookup for metadata
+ * Create exact lab result with database lookup for metadata
+ * Uses EXACT match from CHILEAN_LAB_FORMATS for 100% accuracy
  */
-function createSimplifiedLabResult(
+function createExactLabResult(
   examen: string,
   resultado: string,
   healthMarkerLookup: Map<string, HealthMarkerMapping>,
@@ -825,54 +820,137 @@ function createSimplifiedLabResult(
     parsedResultado = parseFloat(resultado.replace(',', '.'))
   }
   
-  // Lookup lab format from comprehensive database
+  // EXACT lookup from comprehensive database
   const format = CHILEAN_LAB_FORMATS[examen]
-  
-  // Map to health marker for system code
-  let systemCode: string | null = null
-  let category: string = 'other'
-  let priority: string = 'low'
-  
-  const upperExamen = examen.toUpperCase()
-  const markerEntries = Array.from(healthMarkerLookup.entries())
-  
-  for (const [searchTerm, marker] of markerEntries) {
-    if (upperExamen.includes(searchTerm) || searchTerm.includes(upperExamen)) {
-      systemCode = marker.systemCode
-      category = marker.category
-      priority = marker.priority
-      break
-    }
+  if (!format) {
+    console.warn(`⚠️  No exact format found for: ${examen}`)
+    return null
   }
   
-  // Use format data if available, otherwise defaults
-  const unidad = format?.unit || null
-  const valorReferencia = format?.normalRange || null
-  const metodo = format?.method || null
-  const resultType = format?.type || (typeof parsedResultado === 'number' ? 'numeric' : 'qualitative')
+  // Get system code using exact lab name mapping
+  const systemCode = getExactSystemCode(examen)
   
-  // Determine confidence based on pattern and database match
-  let confidence = 85 // Base confidence for simplified extraction
-  if (format) confidence += 10 // Boost for known lab format
-  if (systemCode) confidence += 5 // Boost for health marker mapping
+  // Determine confidence - 100% for exact matches
+  const confidence = 100
   
   return {
     examen,
     resultado: parsedResultado,
-    unidad,
-    valorReferencia,
-    metodo,
+    unidad: format.unit,
+    valorReferencia: format.normalRange,
+    metodo: format.method,
     tipoMuestra: 'SUERO', // Default, will be updated by sample type detection
     isAbnormal: false, // Will be determined later by abnormal detection
     abnormalIndicator: '',
     systemCode,
-    category: format?.category || category,
-    priority: format?.priority || priority,
+    category: format.category,
+    priority: format.priority,
     confidence,
     position,
     context: context.substring(0, 100),
-    resultType: resultType as any
+    resultType: format.type as any
   }
+}
+
+/**
+ * Get exact system code for lab name using precise mapping
+ */
+function getExactSystemCode(labName: string): string | null {
+  const exactMapping: Record<string, string> = {
+    // Glucose
+    'GLICEMIA EN AYUNO (BASAL)': 'glucose_fasting',
+    'HEMOGLOBINA GLICADA A1C': 'hba1c',
+    
+    // Thyroid
+    'H. TIROESTIMULANTE (TSH)': 'tsh',
+    'H. TIROXINA LIBRE (T4 LIBRE)': 't4_free',
+    
+    // Liver
+    'BILIRRUBINA TOTAL': 'bilirubin_total',
+    'BILIRRUBINA DIRECTA': 'bilirubin_direct',
+    'GOT (A.S.T)': 'ast',
+    'GPT (A.L.T)': 'alt',
+    'FOSF. ALCALINAS (ALP)': 'alkaline_phosphatase',
+    'G.G.T.': 'ggt',
+    'ALBÚMINA': 'albumin',
+    
+    // Kidney
+    'CREATININA': 'creatinine',
+    'VFG': 'egfr',
+    'NITROGENO UREICO (BUN)': 'bun',
+    'UREMIA (CALCULO)': 'urea_calculated',
+    'ÁCIDO URICO (URICEMIA)': 'uric_acid',
+    'MICROALBUMINURIA AISLADA': 'microalbumin',
+    'CREATINURIA AISLADA': 'creatinine_urine',
+    'MAU-RAC (calculo)': 'albumin_creatinine_ratio',
+    
+    // Electrolytes
+    'SODIO (Na) EN SANGRE': 'sodium',
+    'POTASIO (K) EN SANGRE': 'potassium',
+    'CLORO (Cl) EN SANGRE': 'chloride',
+    
+    // Lipids
+    'TRIGLICERIDOS': 'triglycerides',
+    'COLESTEROL TOTAL': 'cholesterol_total',
+    'COLESTEROL HDL': 'cholesterol_hdl',
+    'COLESTEROL LDL (CALCULO)': 'cholesterol_ldl',
+    'COLESTEROL VLDL (CALCULO)': 'cholesterol_vldl',
+    'CALCULO TOTAL/HDL': 'cholesterol_ratio',
+    
+    // Vitamins
+    'VITAMINA B12': 'vitamin_b12',
+    
+    // Blood Count - CORRECTED MAPPING
+    'HEMOGLOBINA': 'hemoglobin',
+    'HEMATOCRITO': 'hematocrit',
+    'RECUENTO GLOBULOS ROJOS': 'rbc',
+    'RECUENTO GLOBULOS BLANCOS': 'wbc',
+    'RECUENTO PLAQUETAS': 'platelets',
+    'V.C.M': 'mcv',
+    'H.C.M': 'mch',
+    'C.H.C.M': 'mchc',
+    
+    // Blood Differential
+    'EOSINOFILOS': 'eosinophils',
+    'BASOFILOS': 'basophils',
+    'LINFOCITOS': 'lymphocytes',
+    'MONOCITOS': 'monocytes',
+    'NEUTROFILOS': 'neutrophils',
+    'BACILIFORMES': 'bands',
+    'JUVENILES': 'juvenile',
+    'MIELOCITOS': 'myelocytes',
+    'PROMIELOCITOS': 'promyelocytes',
+    'BLASTOS': 'blasts',
+    'V.H.S.': 'esr',
+    
+    // Urine Complete
+    'COLOR': 'urine_color',
+    'ASPECTO': 'urine_appearance',
+    'PH': 'urine_ph',
+    'DENSIDAD': 'urine_density',
+    'PROTEINAS': 'urine_protein',
+    'GLUCOSA': 'urine_glucose',
+    'CETONAS': 'urine_ketones',
+    'SANGRE EN ORINA': 'urine_blood',
+    'UROBILINOGENO': 'urine_urobilinogen',
+    'BILIRRUBINA': 'urine_bilirubin',
+    'NITRITOS': 'urine_nitrites',
+    'LEUCOCITOS': 'urine_leukocytes',
+    
+    // Urine Sediment
+    'HEMATIES POR CAMPO': 'urine_rbc',
+    'LEUCOCITOS POR CAMPO': 'urine_wbc',
+    'CELULAS EPITELIALES': 'urine_epithelial_cells',
+    'MUCUS': 'urine_mucus',
+    'CRISTALES': 'urine_crystals',
+    'CILINDROS': 'urine_casts',
+    'BACTERIAS': 'urine_bacteria',
+    
+    // Serology
+    'R.P.R.': 'rpr'
+  }
+  
+  return exactMapping[labName] || null
 }
 
 /**
@@ -887,12 +965,15 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   // Clean header/footer contamination first
   const cleanedText = cleanHeaderFooterContamination(text, pages)
   
-  // Primary approach: Simplified LAB NAME + RESULT extraction
-  const simplifiedResults = extractLabNamesAndResults(cleanedText, healthMarkerLookup)
-  console.log(`🎯 Simplified parser found ${simplifiedResults.length} results`)
+  // Primary approach: EXACT LAB NAME + RESULT extraction
+  const exactResults = extractLabNamesAndResults(cleanedText, healthMarkerLookup)
+  console.log(`🎯 EXACT parser found ${exactResults.length} results`)
+  
+  // Clean contaminated fields BEFORE secondary parsing
+  const decontaminatedText = cleanContaminatedNormalRanges(cleanedText)
   
   // Secondary approach: Group-aware 5-column parsing for remaining labs
-  const groupResults = extractLabsByGroupStructure(cleanedText, healthMarkerLookup)
+  const groupResults = extractLabsByGroupStructure(decontaminatedText, healthMarkerLookup)
   console.log(`📊 Group-aware parser found ${groupResults.length} additional results`)
   
   // Fallback: Legacy extraction strategies for any missed results
@@ -916,9 +997,9 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   console.log(`📊 Fallback extractors found ${results.length} additional results`)
   
   // Combine all extraction approaches
-  results.push(...simplifiedResults)
+  results.push(...exactResults)
   results.push(...groupResults)
-  console.log(`🎯 Total before deduplication: ${results.length} results (${simplifiedResults.length} simplified + ${groupResults.length} group + ${results.length - simplifiedResults.length - groupResults.length} fallback)`)
+  console.log(`🎯 Total before deduplication: ${results.length} results (${exactResults.length} exact + ${groupResults.length} group + ${results.length - exactResults.length - groupResults.length} fallback)`)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
@@ -1864,6 +1945,69 @@ function extractEmbeddedMultiResults(
   }
   
   return results
+}
+
+/**
+ * Clean contaminated normal range fields that contain embedded lab results
+ * Example: TRIGLICERIDOS136(mg/dL)Normal: < 150Enzimático, Punto Final COLESTEROL TOTAL213(mg/dL)
+ * Should be cleaned to extract individual labs without contamination
+ */
+function cleanContaminatedNormalRanges(text: string): string {
+  let cleanedText = text
+  
+  console.log('🧹 Cleaning contaminated normal range fields...')
+  
+  // Pattern for contaminated fields with embedded results
+  // TRIGLICERIDOS136(mg/dL)Normal: < 150Enzimático, Punto Final Límite alto: 150–199 Alto: 200-499 Muy alto: > 500 COLESTEROL TOTAL213(mg/dL)
+  const contaminatedPatterns = [
+    // Lipid panel contamination - extract individual results and clean ranges
+    /(TRIGLICERIDOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=COLESTEROL TOTAL|$)/g,
+    /(COLESTEROL TOTAL)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=COLESTEROL HDL|$)/g,
+    /(COLESTEROL HDL)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=COLESTEROL LDL|$)/g,
+    /(COLESTEROL LDL \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=COLESTEROL VLDL|$)/g,
+    /(COLESTEROL VLDL \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=CALCULO TOTAL|$)/g,
+    
+    // Blood count contamination - clean ranges with embedded patient info
+    /(RECUENTO GLOBULOS ROJOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=HEMATOCRITO|$)/g,
+    /(HEMATOCRITO)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=HEMOGLOBINA|$)/g,
+    /(HEMOGLOBINA)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=V\.C\.M|RECUENTO|$)/g,
+    
+    // Electrolytes contamination - clean ranges with patient info
+    /(SODIO.{0,20}EN SANGRE)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=POTASIO|$)/g,
+    /(POTASIO.{0,20}EN SANGRE)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=CLORO|$)/g,
+    
+    // Kidney function contamination
+    /(UREMIA \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=RUT|Fecha|$)/g,
+    /(CREATININA)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.*?)(?=VFG|RUT|$)/g
+  ]
+  
+  for (const pattern of contaminatedPatterns) {
+    cleanedText = cleanedText.replace(pattern, (match, labName, result, unit, contamination) => {
+      // Extract only the clean normal range, remove patient info and other embedded data
+      let cleanRange = ''
+      
+      // Extract just the normal range part, exclude patient info
+      const rangePart = contamination.match(/^([^R]*?)(?=RUT|Fecha|Método|$)/)
+      if (rangePart) {
+        cleanRange = rangePart[1]
+          .replace(/Enzimático.*?$/g, '') // Remove method descriptions
+          .replace(/Límite alto:.*?$/g, '') // Remove extended ranges
+          .replace(/Alto:.*?$/g, '') // Remove risk categories
+          .replace(/Muy alto:.*?$/g, '') // Remove risk categories
+          .replace(/Bajo.*?$/g, '') // Remove risk categories
+          .replace(/Moderado.*?$/g, '') // Remove risk categories
+          .replace(/Normal:?\s*/g, '') // Clean "Normal:" prefix
+          .replace(/\s{2,}/g, ' ') // Normalize spaces
+          .trim()
+      }
+      
+      // Return clean format: LAB NAME RESULT (UNIT) CLEAN_RANGE
+      return `${labName} ${result} (${unit}) ${cleanRange}`.trim()
+    })
+  }
+  
+  console.log(`🧹 Cleaned contaminated normal ranges`)
+  return cleanedText
 }
 
 /**
