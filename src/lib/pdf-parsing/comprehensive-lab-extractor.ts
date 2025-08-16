@@ -1,6 +1,32 @@
 /**
  * Comprehensive Lab Results Extraction for Chilean Lab Reports
  * Handles ALL 68+ health markers including qualitative results
+ * 
+ * ✅ Current Implementation: Text-based extraction with sample type segmentation
+ * - Uses "Tipo de Muestra" blocks to prevent contamination
+ * - Enhanced stopword filtering for metadata
+ * - Normalization pipeline for data quality
+ * 
+ * 🔮 Future Consideration: Coordinate-based PDF extraction
+ * For even more robust extraction, consider switching to layout-aware parsing:
+ * 
+ * Benefits:
+ * - Spatial understanding prevents accidental text concatenation
+ * - Can separate table regions from header/footer metadata
+ * - Groups text by line positions and coordinates
+ * 
+ * Implementation approach:
+ * 1. Use pdfplumber (Python) or pdf.js + coordinates (Node/TS)
+ * 2. Extract text with x/y coordinates preserved
+ * 3. Group text by line positions
+ * 4. Apply existing regex patterns to spatially-isolated text blocks
+ * 
+ * Trade-offs:
+ * - Requires complete rewrite of extraction engine
+ * - May break existing PDF.js workflows
+ * - Adds complexity but significantly reduces contamination
+ * 
+ * Recommendation: Implement for v2.0 if current approach reaches limits
  */
 
 import { CHILEAN_HEALTH_MARKERS, createHealthMarkerLookup, type HealthMarkerMapping } from './spanish-health-markers'
@@ -1100,64 +1126,205 @@ function parseHemogramPanel(text: string, healthMarkerLookup: Map<string, Health
 }
 
 /**
- * Extract ALL lab results from Chilean PDF text with group-aware 5-column parsing
+ * ✅ ChatGPT Strategy: Segment PDF text by "Tipo de Muestra" blocks
+ * This prevents contamination between different sample types
+ */
+interface SampleTypeBlock {
+  sampleType: string
+  content: string
+}
+
+function segmentBySampleType(text: string): SampleTypeBlock[] {
+  const blocks: SampleTypeBlock[] = []
+  
+  // Split by "Tipo de Muestra" declarations
+  const segments = text.split(/Tipo de Muestra\s*:\s*([A-ZÁÉÍÓÚÑ\s\.\+]+)/g)
+  
+  console.log(`🔍 Found ${Math.floor(segments.length / 2)} "Tipo de Muestra" segments`)
+  
+  // Process segments in pairs: [content before type, type name, content after type]
+  for (let i = 1; i < segments.length; i += 2) {
+    const sampleType = segments[i].trim()
+    const content = segments[i + 1] || ''
+    
+    if (content.length > 50) { // Only include substantial blocks
+      // Clean up sample type name
+      const cleanSampleType = sampleType
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s\.\+\-]/g, '')
+        .trim()
+      
+      blocks.push({
+        sampleType: cleanSampleType,
+        content: content.trim()
+      })
+      
+      console.log(`🧪 Sample block: ${cleanSampleType} (${content.length} chars)`)
+    }
+  }
+  
+  // If no blocks found, create a default SUERO block
+  if (blocks.length === 0) {
+    console.log('⚠️ No "Tipo de Muestra" blocks found, using entire text as SUERO')
+    blocks.push({
+      sampleType: 'SUERO',
+      content: text
+    })
+  }
+  
+  return blocks
+}
+
+/**
+ * ✅ Enhanced stopword filtering for metadata contamination
+ */
+function filterMetadataContamination(text: string): string {
+  const stopwords = [
+    'RUT', 'Folio', 'Nombre', 'Fecha de Ingreso', 'Fecha de Validación', 
+    'Procedencia', 'Profesional Solicitante', 'Toma de Muestra',
+    'LABORATORIO CLÍNICO', 'CORPORACIÓN MUNICIPAL', 'Calle Washington',
+    'Fecha de Recepción', 'Método Analítico'
+  ]
+  
+  let cleanedText = text
+  
+  // Remove lines that are primarily metadata
+  const lines = text.split('\n')
+  const filteredLines = lines.filter(line => {
+    const hasStopwords = stopwords.some(stopword => line.includes(stopword))
+    const hasLabData = /[A-ZÁÉÍÓÚÑ\s]{3,}\s*\d+.*\(.*\)/.test(line)
+    
+    // Keep line if it has lab data, even if it has some metadata
+    return !hasStopwords || hasLabData
+  })
+  
+  cleanedText = filteredLines.join('\n')
+  
+  console.log(`🧹 Filtered ${lines.length - filteredLines.length} metadata lines`)
+  return cleanedText
+}
+
+/**
+ * ✅ ChatGPT Strategy: Normalization pipeline for better data quality
+ */
+function normalizeLabResult(result: ComprehensiveLabResult): ComprehensiveLabResult {
+  // Normalize numeric results - convert commas to dots
+  if (typeof result.resultado === 'string' && /^\d+,\d+$/.test(result.resultado)) {
+    result.resultado = parseFloat(result.resultado.replace(',', '.'))
+  }
+  
+  // Normalize units - standardize common variations
+  if (result.unidad) {
+    result.unidad = result.unidad
+      .replace(/mgl?\/dl/gi, 'mg/dL')
+      .replace(/ul?\/l/gi, 'U/L')
+      .replace(/μui\/ml/gi, 'μUI/mL')
+      .replace(/ng\/dl/gi, 'ng/dL')
+      .replace(/pg\/ml/gi, 'pg/mL')
+      .replace(/meq\/l/gi, 'mEq/L')
+      .replace(/x10\^?(\d)/gi, 'x10^$1')
+      .trim()
+  }
+  
+  // Normalize exam names - handle common variations
+  result.examen = result.examen
+    .replace(/\s+/g, ' ')
+    .replace(/GLICEMIA\s+EN\s+AYUNAS?/gi, 'GLICEMIA EN AYUNO (BASAL)')
+    .replace(/GLUCOSA\s+EN\s+AYUNO/gi, 'GLICEMIA EN AYUNO (BASAL)')
+    .replace(/HBA1C/gi, 'HEMOGLOBINA GLICADA A1C')
+    .replace(/TSH/gi, 'H. TIROESTIMULANTE (TSH)')
+    .replace(/T4\s+LIBRE/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
+    .trim()
+  
+  // Clean reference ranges - remove extra spaces and normalize format
+  if (result.valorReferencia) {
+    result.valorReferencia = result.valorReferencia
+      .replace(/\s+/g, ' ')
+      .replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2')
+      .replace(/menor\s+a\s*/gi, 'Menor a ')
+      .replace(/mayor\s+a\s*/gi, 'Mayor a ')
+      .replace(/hasta\s*/gi, 'Hasta ')
+      .trim()
+  }
+  
+  // Clean method descriptions
+  if (result.metodo) {
+    result.metodo = result.metodo
+      .replace(/\s+/g, ' ')
+      .replace(/i\.f\.c\.c/gi, 'I.F.C.C')
+      .trim()
+  }
+  
+  return result
+}
+
+/**
+ * Extract ALL lab results from Chilean PDF text with sample type segmentation
  */
 export function extractAllLabResults(text: string, pages?: string[]): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   const healthMarkerLookup = createHealthMarkerLookup()
   
-  console.log('🔍 Starting comprehensive lab extraction with group-aware parsing...')
+  console.log('🔍 Starting comprehensive lab extraction with sample type segmentation...')
   
   // Clean header/footer contamination first
   const cleanedText = cleanHeaderFooterContamination(text, pages)
   
-  // Primary approach: EXACT LAB NAME + RESULT extraction
-  const exactResults = extractLabNamesAndResults(cleanedText, healthMarkerLookup)
-  console.log(`🎯 EXACT parser found ${exactResults.length} results`)
+  // ✅ ChatGPT Strategy: Segment by "Tipo de Muestra" blocks
+  const sampleTypeBlocks = segmentBySampleType(cleanedText)
+  console.log(`🧪 Found ${sampleTypeBlocks.length} sample type blocks`)
   
-  // Clean contaminated fields BEFORE secondary parsing
-  const decontaminatedText = cleanContaminatedNormalRanges(cleanedText)
-  
-  // Secondary approach: Dedicated parsers for complex sections
-  const lipidResults = parseLipidProfile(decontaminatedText, healthMarkerLookup)
-  const hemogramResults = parseHemogramPanel(decontaminatedText, healthMarkerLookup)
-  console.log(`🔬 Dedicated parsers found ${lipidResults.length + hemogramResults.length} results (${lipidResults.length} lipids + ${hemogramResults.length} hemogram)`)
-  
-  // Tertiary approach: Group-aware 5-column parsing for remaining labs
-  const groupResults = extractLabsByGroupStructure(decontaminatedText, healthMarkerLookup)
-  console.log(`📊 Group-aware parser found ${groupResults.length} additional results`)
-  
-  // Fallback: Legacy extraction strategies for any missed results
-  console.log(`🔄 Running fallback extractors to catch missed labs...`)
-  const sections = cleanedText.split(/_{50,}/)
-  for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-    const section = sections[sectionIndex]
-    const tipoMuestra = extractSampleType(section)
+  for (const block of sampleTypeBlocks) {
+    console.log(`\n🔬 Processing ${block.sampleType} block (${block.content.length} chars)`)
     
-    const fallbackResults = [
-      ...extractNumericResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractEmbeddedMultiResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractCalculatedResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractMicroscopyResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractTabularResults(section, healthMarkerLookup, tipoMuestra)
+    // Filter metadata contamination from this block
+    const filteredContent = filterMetadataContamination(block.content)
+    
+    // Clean contaminated fields within this block
+    const decontaminatedBlock = cleanContaminatedNormalRanges(filteredContent)
+    
+    // Apply all extraction strategies to this isolated block
+    const blockResults = [
+      // Primary: EXACT LAB NAME + RESULT extraction
+      ...extractLabNamesAndResults(decontaminatedBlock, healthMarkerLookup),
+      
+      // Secondary: Dedicated parsers for complex sections
+      ...parseLipidProfile(decontaminatedBlock, healthMarkerLookup),
+      ...parseHemogramPanel(decontaminatedBlock, healthMarkerLookup),
+      
+      // Tertiary: Group-aware 5-column parsing
+      ...extractLabsByGroupStructure(decontaminatedBlock, healthMarkerLookup),
+      
+      // Fallback: Legacy extraction strategies
+      ...extractNumericResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+      ...extractEmbeddedMultiResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+      ...extractQualitativeResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+      ...extractCalculatedResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+      ...extractMicroscopyResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+      ...extractTabularResults(decontaminatedBlock, healthMarkerLookup, block.sampleType)
     ]
     
-    results.push(...fallbackResults)
+    // Set correct sample type for all results from this block
+    blockResults.forEach(result => {
+      if (result.tipoMuestra === 'SUERO' || !result.tipoMuestra) {
+        result.tipoMuestra = block.sampleType
+      }
+    })
+    
+    console.log(`✅ Block ${block.sampleType}: ${blockResults.length} results`)
+    results.push(...blockResults)
   }
-  console.log(`📊 Fallback extractors found ${results.length} additional results`)
   
-  // Combine all extraction approaches
-  results.push(...exactResults)
-  results.push(...lipidResults)
-  results.push(...hemogramResults)
-  results.push(...groupResults)
-  console.log(`🎯 Total before deduplication: ${results.length} results (${exactResults.length} exact + ${lipidResults.length} lipid + ${hemogramResults.length} hemogram + ${groupResults.length} group + ${results.length - exactResults.length - lipidResults.length - hemogramResults.length - groupResults.length} fallback)`)
+  console.log(`🎯 Total before deduplication: ${results.length} results`)
+  
+  // Apply normalization pipeline to all results
+  const normalizedResults = results.map(result => normalizeLabResult(result))
+  console.log(`🔧 Applied normalization pipeline`)
   
   // Remove duplicates and merge results
-  const uniqueResults = removeDuplicateResults(results)
+  const uniqueResults = removeDuplicateResults(normalizedResults)
   
-  console.log(`🎯 Comprehensive extraction found ${uniqueResults.length} results`)
+  console.log(`🎯 Block-segmented extraction found ${uniqueResults.length} results`)
   return uniqueResults
 }
 
