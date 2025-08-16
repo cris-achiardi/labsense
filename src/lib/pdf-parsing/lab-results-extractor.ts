@@ -14,6 +14,7 @@
 
 import { extractTextFromPDF } from './pdf-text-extractor'
 import { createHealthMarkerLookup, type HealthMarkerMapping } from './spanish-health-markers'
+import { extractLabResultsSimple } from './simple-lab-extractor'
 
 export interface LabResult {
   // Core lab result data
@@ -764,7 +765,33 @@ export async function extractCompleteLabReport(pdfBuffer: Buffer): Promise<Compl
     const healthcareContext = extractHealthcareContext(firstPageText)
     
     // Extract all lab results
-    const labResults = extractLabResults(fullText)
+    let labResults = extractLabResults(fullText)
+    
+    // If no results found, try the simple extractor as fallback
+    if (labResults.length === 0) {
+      console.log('🔄 No results from complex extractor, trying simple patterns...')
+      const simpleResults = extractLabResultsSimple(fullText)
+      
+      // Convert simple results to LabResult format
+      labResults = simpleResults.map(simple => ({
+        examen: simple.examen,
+        resultado: simple.resultado,
+        unidad: simple.unidad,
+        valorReferencia: simple.valorReferencia,
+        metodo: simple.metodo,
+        tipoMuestra: simple.tipoMuestra,
+        isAbnormal: simple.isAbnormal,
+        abnormalIndicator: simple.abnormalIndicator,
+        systemCode: simple.systemCode,
+        category: simple.category,
+        priority: simple.priority,
+        confidence: simple.confidence,
+        position: simple.position,
+        context: simple.context
+      }))
+      
+      console.log(`✅ Simple extractor found ${labResults.length} results`)
+    }
     
     // Calculate metadata
     const abnormalCount = labResults.filter(r => r.isAbnormal).length
