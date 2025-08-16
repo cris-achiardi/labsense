@@ -5,6 +5,685 @@
 
 import { CHILEAN_HEALTH_MARKERS, createHealthMarkerLookup, type HealthMarkerMapping } from './spanish-health-markers'
 
+/**
+ * Chilean Lab Format Specifications
+ * Each lab has standardized format, units, methods, and expected values
+ */
+interface ChileanLabFormat {
+  unit: string | null
+  method: string | null
+  normalRange: string | null
+  type: 'numeric' | 'observation' | 'qualitative' | 'calculated'
+  category: string
+  priority: 'critical' | 'high' | 'medium' | 'low'
+  expectedValues?: string[]
+  pattern?: RegExp
+}
+
+const CHILEAN_LAB_FORMATS: Record<string, ChileanLabFormat> = {
+  // ================================
+  // CRITICAL GLUCOSE LABS
+  // ================================
+  'GLICEMIA EN AYUNO (BASAL)': {
+    unit: 'mg/dL',
+    method: 'Hexoquinasa',
+    normalRange: '74-106',
+    type: 'numeric',
+    category: 'glucose',
+    priority: 'critical'
+  },
+  
+  'HEMOGLOBINA GLICADA A1C': {
+    unit: '%',
+    method: 'Cromatografía liquida de alta eficiencia (HPLC)',
+    normalRange: '4-6',
+    type: 'numeric',
+    category: 'glucose',
+    priority: 'critical'
+  },
+  
+  // ================================
+  // CRITICAL THYROID LABS
+  // ================================
+  'H. TIROESTIMULANTE (TSH)': {
+    unit: 'μUI/mL',
+    method: 'Quimioluminiscencia',
+    normalRange: '0,55-4,78',
+    type: 'numeric',
+    category: 'thyroid',
+    priority: 'critical'
+  },
+  
+  'H. TIROXINA LIBRE (T4 LIBRE)': {
+    unit: 'ng/dL',
+    method: 'Quimioluminiscencia',
+    normalRange: '0,89-1,76',
+    type: 'numeric',
+    category: 'thyroid',
+    priority: 'high'
+  },
+  
+  // ================================
+  // LIVER FUNCTION PANEL
+  // ================================
+  'BILIRRUBINA TOTAL': {
+    unit: 'mg/dL',
+    method: 'Oxidación Vanadato',
+    normalRange: '0,3-1,2',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'medium'
+  },
+  
+  'BILIRRUBINA DIRECTA': {
+    unit: 'mg/dL',
+    method: 'Oxidación Vanadato',
+    normalRange: 'Menor a 0.30',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'medium'
+  },
+  
+  'GOT (A.S.T)': {
+    unit: 'U/L',
+    method: 'I.F.C.C/con piridoxal fosfato',
+    normalRange: 'Hasta 34',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'high'
+  },
+  
+  'GPT (A.L.T)': {
+    unit: 'U/L',
+    method: 'I.F.C.C/con piridoxal fosfato',
+    normalRange: '10-49',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'high'
+  },
+  
+  'FOSF. ALCALINAS (ALP)': {
+    unit: 'U/L',
+    method: 'I.F.C.C/con piridoxal fosfato',
+    normalRange: '46-116',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'medium'
+  },
+  
+  'G.G.T.': {
+    unit: 'U/L',
+    method: 'G-glutamil-carboxi-nitroanilida',
+    normalRange: 'Menor a 38',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'medium'
+  },
+  
+  'ALBÚMINA': {
+    unit: 'g/dL',
+    method: 'Verde bromocresol',
+    normalRange: '3,2-4,8',
+    type: 'numeric',
+    category: 'liver',
+    priority: 'medium'
+  },
+  
+  // ================================
+  // KIDNEY FUNCTION PANEL
+  // ================================
+  'CREATININA': {
+    unit: 'mg/dL',
+    method: 'Jaffé cinético',
+    normalRange: '0,55-1,02',
+    type: 'numeric',
+    category: 'kidney',
+    priority: 'high'
+  },
+  
+  'VFG': {
+    unit: 'mL/min/1.73 mt²',
+    method: 'Cálculo',
+    normalRange: 'Mayor a 60',
+    type: 'calculated',
+    category: 'kidney',
+    priority: 'high'
+  },
+  
+  'NITROGENO UREICO (BUN)': {
+    unit: 'mg/dL',
+    method: 'Ureasa con GLDH',
+    normalRange: '9-23',
+    type: 'numeric',
+    category: 'kidney',
+    priority: 'medium'
+  },
+  
+  'UREMIA (CALCULO)': {
+    unit: 'mg/dL',
+    method: 'Cálculo',
+    normalRange: '15,4-37,4',
+    type: 'calculated',
+    category: 'kidney',
+    priority: 'medium'
+  },
+  
+  'ÁCIDO URICO (URICEMIA)': {
+    unit: 'mg/dL',
+    method: 'Uricasa-peroxidasa',
+    normalRange: '3,1-7,8',
+    type: 'numeric',
+    category: 'kidney',
+    priority: 'medium'
+  },
+  
+  'MICROALBUMINURIA AISLADA': {
+    unit: 'mg/L',
+    method: 'Cálculo',
+    normalRange: 'Menor a 30',
+    type: 'numeric',
+    category: 'kidney',
+    priority: 'medium'
+  },
+  
+  'CREATINURIA AISLADA': {
+    unit: 'mg/dL',
+    method: 'Cálculo',
+    normalRange: null,
+    type: 'numeric',
+    category: 'kidney',
+    priority: 'low'
+  },
+  
+  'MAU-RAC (calculo)': {
+    unit: 'mg/gr',
+    method: 'Cálculo',
+    normalRange: 'Menor a 30',
+    type: 'calculated',
+    category: 'kidney',
+    priority: 'medium'
+  },
+  
+  // ================================
+  // ELECTROLYTES PANEL
+  // ================================
+  'SODIO (Na) EN SANGRE': {
+    unit: 'mEq/L',
+    method: 'ISE Indirecto',
+    normalRange: '136-145',
+    type: 'numeric',
+    category: 'electrolytes',
+    priority: 'medium'
+  },
+  
+  'POTASIO (K) EN SANGRE': {
+    unit: 'mEq/L',
+    method: 'ISE Indirecto',
+    normalRange: '3,5-5,1',
+    type: 'numeric',
+    category: 'electrolytes',
+    priority: 'medium'
+  },
+  
+  'CLORO (Cl) EN SANGRE': {
+    unit: 'mEq/L',
+    method: 'ISE Indirecto',
+    normalRange: '98-107',
+    type: 'numeric',
+    category: 'electrolytes',
+    priority: 'medium'
+  },
+  
+  // ================================
+  // LIPID PROFILE PANEL
+  // ================================
+  'TRIGLICERIDOS': {
+    unit: 'mg/dL',
+    method: 'Enzimático, Punto Final',
+    normalRange: 'Normal: < 150',
+    type: 'numeric',
+    category: 'lipids',
+    priority: 'high'
+  },
+  
+  'COLESTEROL TOTAL': {
+    unit: 'mg/dL',
+    method: 'Enzimático',
+    normalRange: 'Bajo (deseable): < 200',
+    type: 'numeric',
+    category: 'lipids',
+    priority: 'high'
+  },
+  
+  'COLESTEROL HDL': {
+    unit: 'mg/dL',
+    method: 'Medición Directa, Izawa y Cols',
+    normalRange: 'Bajo (alto riesgo): < 40',
+    type: 'numeric',
+    category: 'lipids',
+    priority: 'high'
+  },
+  
+  'COLESTEROL LDL (CALCULO)': {
+    unit: 'mg/dL',
+    method: 'Cálculo',
+    normalRange: '1-150',
+    type: 'calculated',
+    category: 'lipids',
+    priority: 'high'
+  },
+  
+  'COLESTEROL VLDL (CALCULO)': {
+    unit: 'mg/dL',
+    method: 'Cálculo',
+    normalRange: 'Hasta 36',
+    type: 'calculated',
+    category: 'lipids',
+    priority: 'medium'
+  },
+  
+  'CALCULO TOTAL/HDL': {
+    unit: null,
+    method: 'Cálculo',
+    normalRange: null,
+    type: 'calculated',
+    category: 'lipids',
+    priority: 'medium'
+  },
+  
+  // ================================
+  // VITAMINS & MINERALS
+  // ================================
+  'VITAMINA B12': {
+    unit: 'pg/mL',
+    method: 'Quimioluminiscencia',
+    normalRange: '211-911',
+    type: 'numeric',
+    category: 'vitamins',
+    priority: 'low'
+  },
+  
+  // ================================
+  // HEMOGRAMA - BLOOD COUNT
+  // ================================
+  'HEMOGLOBINA': {
+    unit: 'g/dL',
+    method: 'Colorimetria',
+    normalRange: '12,3-15,3',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'medium'
+  },
+  
+  'HEMATOCRITO': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '35-47',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'medium'
+  },
+  
+  'RECUENTO GLOBULOS ROJOS': {
+    unit: 'x10^6/uL',
+    method: 'Citometría de flujo',
+    normalRange: '4,1-5,1',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'medium'
+  },
+  
+  'RECUENTO GLOBULOS BLANCOS': {
+    unit: 'x10^3/uL',
+    method: 'Citometría de flujo',
+    normalRange: '4,5-11',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'medium'
+  },
+  
+  'RECUENTO PLAQUETAS': {
+    unit: 'x10^3/uL',
+    method: 'Citometría de flujo',
+    normalRange: '150-400',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'medium'
+  },
+  
+  'V.C.M': {
+    unit: 'fL',
+    method: 'Citometría de flujo',
+    normalRange: '80-99',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'low'
+  },
+  
+  'H.C.M': {
+    unit: 'pg',
+    method: 'Citometría de flujo',
+    normalRange: '26,6-32',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'low'
+  },
+  
+  'C.H.C.M': {
+    unit: 'gr/dL',
+    method: 'Citometría de flujo',
+    normalRange: '32-35',
+    type: 'numeric',
+    category: 'blood',
+    priority: 'low'
+  },
+  
+  // Blood Differential
+  'EOSINOFILOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '2-4',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'BASOFILOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-1',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'LINFOCITOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '25-40',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'MONOCITOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '2-8',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'NEUTROFILOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '50-70',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'BACILIFORMES': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-0',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'JUVENILES': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-0',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'MIELOCITOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-0',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'PROMIELOCITOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-0',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'BLASTOS': {
+    unit: '%',
+    method: 'Citometría de flujo',
+    normalRange: '0-0',
+    type: 'numeric',
+    category: 'blood_differential',
+    priority: 'low'
+  },
+  
+  'V.H.S.': {
+    unit: 'mm/hr',
+    method: 'Colorimetria',
+    normalRange: '0-15',
+    type: 'observation',
+    category: 'blood',
+    priority: 'low',
+    expectedValues: ['No procesado por falta de insumos', 'Normal', 'Elevado']
+  },
+  
+  // ================================
+  // ORINA COMPLETA - COMPLETE URINE
+  // ================================
+  'COLOR': {
+    unit: null,
+    method: null,
+    normalRange: 'Amarillo',
+    type: 'observation',
+    category: 'urine',
+    priority: 'low',
+    expectedValues: ['Amarillo', 'Amarillo claro', 'Rojizo', 'Verde', 'Amarillo pálido']
+  },
+  
+  'ASPECTO': {
+    unit: null,
+    method: null,
+    normalRange: 'Claro',
+    type: 'observation',
+    category: 'urine',
+    priority: 'low',
+    expectedValues: ['Claro', 'Turbio', 'Opaco', 'Ligeramente turbio']
+  },
+  
+  'PH': {
+    unit: null,
+    method: null,
+    normalRange: '5-8',
+    type: 'numeric',
+    category: 'urine',
+    priority: 'low'
+  },
+  
+  'DENSIDAD': {
+    unit: null,
+    method: null,
+    normalRange: '1,01-1,03',
+    type: 'numeric',
+    category: 'urine',
+    priority: 'low'
+  },
+  
+  'PROTEINAS': {
+    unit: 'mg/dL',
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', 'Positivo', '+', '++', '+++', 'Trazas']
+  },
+  
+  'GLUCOSA': {
+    unit: 'mg/dL',
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', '+', '++', '+++', '++++', 'Trazas']
+  },
+  
+  'CETONAS': {
+    unit: 'mg/dL',
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', 'Positivo', '+', '++', '+++', 'Trazas']
+  },
+  
+  'SANGRE EN ORINA': {
+    unit: 'Eri/uL',
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', 'Positivo', '+', '++', '+++', 'Trazas']
+  },
+  
+  'UROBILINOGENO': {
+    unit: 'mg/dL',
+    method: 'Colorimétrico',
+    normalRange: 'Normal',
+    type: 'numeric',
+    category: 'urine',
+    priority: 'low'
+  },
+  
+  'BILIRRUBINA': {
+    unit: null,
+    method: null,
+    normalRange: 'Negativa',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativa', 'Positiva', '+', '++', '+++']
+  },
+  
+  'NITRITOS': {
+    unit: null,
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', 'Positivo']
+  },
+  
+  'LEUCOCITOS': {
+    unit: '/µL',
+    method: null,
+    normalRange: 'Negativo',
+    type: 'qualitative',
+    category: 'urine',
+    priority: 'medium',
+    expectedValues: ['Negativo', 'Positivo', '+', '++', '+++']
+  },
+  
+  // ================================
+  // SEDIMENTO DE ORINA - URINE SEDIMENT
+  // ================================
+  'HEMATIES POR CAMPO': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: '0-2',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low'
+  },
+  
+  'LEUCOCITOS POR CAMPO': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: '0-2',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low'
+  },
+  
+  'CELULAS EPITELIALES': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: 'No se observan',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low',
+    expectedValues: ['No se observan', 'Escasa cantidad', 'Moderada cantidad', 'Abundante', 'Algunas']
+  },
+  
+  'MUCUS': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: 'No se observa',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low',
+    expectedValues: ['No se observa', 'Escasa cantidad', 'Moderada cantidad', 'Abundante']
+  },
+  
+  'CRISTALES': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: 'No se observan',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low',
+    expectedValues: ['No se observan', 'Escasa cantidad', 'Moderada cantidad', 'Abundante', 'Uratos amorfos']
+  },
+  
+  'CILINDROS': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: 'No se observan',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'low',
+    expectedValues: ['No se observan', 'Escasa cantidad', 'Hialinos', 'Granulosos']
+  },
+  
+  'BACTERIAS': {
+    unit: null,
+    method: 'Microscopía',
+    normalRange: 'No se observan',
+    type: 'observation',
+    category: 'urine_sediment',
+    priority: 'medium',
+    expectedValues: ['No se observan', 'Escasa cantidad', 'Moderada cantidad', 'Abundante']
+  },
+  
+  // ================================
+  // SEROLOGY
+  // ================================
+  'R.P.R.': {
+    unit: null,
+    method: 'Aglutinación En Látex',
+    normalRange: 'No reactivo',
+    type: 'qualitative',
+    category: 'serology',
+    priority: 'medium',
+    expectedValues: ['No reactivo', 'Reactivo', 'Positivo', 'Negativo']
+  }
+}
+
 export interface ComprehensiveLabResult {
   examen: string
   resultado: string | number | null
@@ -35,9 +714,13 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   // Clean header/footer contamination first
   const cleanedText = cleanHeaderFooterContamination(text, pages)
   
-  // New approach: Group-aware 5-column parsing
+  // Primary approach: Lab-specific format extraction
+  const labSpecificResults = extractLabsWithSpecificFormats(cleanedText)
+  console.log(`🎯 Lab-specific parser found ${labSpecificResults.length} results`)
+  
+  // Secondary approach: Group-aware 5-column parsing for remaining labs
   const groupResults = extractLabsByGroupStructure(cleanedText, healthMarkerLookup)
-  console.log(`📊 Group-aware parser found ${groupResults.length} results`)
+  console.log(`📊 Group-aware parser found ${groupResults.length} additional results`)
   
   // Fallback: Legacy extraction strategies for any missed results
   console.log(`🔄 Running fallback extractors to catch missed labs...`)
@@ -59,9 +742,10 @@ export function extractAllLabResults(text: string, pages?: string[]): Comprehens
   }
   console.log(`📊 Fallback extractors found ${results.length} additional results`)
   
-  // Combine group results with fallback results
+  // Combine all extraction approaches
+  results.push(...labSpecificResults)
   results.push(...groupResults)
-  console.log(`🎯 Total before deduplication: ${results.length} results`)
+  console.log(`🎯 Total before deduplication: ${results.length} results (${labSpecificResults.length} specific + ${groupResults.length} group + ${results.length - labSpecificResults.length - groupResults.length} fallback)`)
   
   // Remove duplicates and merge results
   const uniqueResults = removeDuplicateResults(results)
@@ -344,6 +1028,386 @@ function extractTabularResults(
   }
   
   return results
+}
+
+/**
+ * Extract labs using Chilean-specific format specifications
+ * Uses exact lab name matching with expected formats
+ */
+function extractLabsWithSpecificFormats(text: string): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  const lines = text.split('\n')
+  
+  // Process each line looking for specific lab formats
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line || line.length < 3) continue
+    
+    // Check each known Chilean lab format
+    for (const [labName, format] of Object.entries(CHILEAN_LAB_FORMATS)) {
+      if (line.includes(labName)) {
+        console.log(`🎯 Found specific lab: ${labName}`)
+        
+        // Extract result based on lab-specific format
+        const labResult = extractSpecificLabFormat(line, labName, format, i, lines)
+        if (labResult) {
+          console.log(`✅ Extracted specific: ${labResult.examen} = ${labResult.resultado}`)
+          results.push(labResult)
+        }
+        break // Only match one lab per line
+      }
+    }
+  }
+  
+  return results
+}
+
+/**
+ * Extract a specific lab using its known format
+ */
+function extractSpecificLabFormat(
+  line: string,
+  labName: string,
+  format: ChileanLabFormat,
+  lineIndex: number,
+  allLines: string[]
+): ComprehensiveLabResult | null {
+  
+  // Different extraction patterns based on lab type
+  switch (format.type) {
+    case 'numeric':
+      return extractNumericLabFormat(line, labName, format, lineIndex, allLines)
+    case 'observation':
+      return extractObservationLabFormat(line, labName, format, lineIndex, allLines)
+    case 'qualitative':
+      return extractQualitativeLabFormat(line, labName, format, lineIndex, allLines)
+    case 'calculated':
+      return extractCalculatedLabFormat(line, labName, format, lineIndex, allLines)
+    default:
+      return null
+  }
+}
+
+/**
+ * Extract numeric lab format: LABNAME RESULT (UNIT) RANGE METHOD
+ */
+function extractNumericLabFormat(
+  line: string,
+  labName: string,
+  format: ChileanLabFormat,
+  lineIndex: number,
+  allLines: string[]
+): ComprehensiveLabResult | null {
+  
+  // Look for the result after the lab name
+  const afterLabName = line.substring(line.indexOf(labName) + labName.length)
+  
+  // Patterns for numeric results
+  const patterns = [
+    // Standard: 269 (mg/dL) [ * ] 74-106 Method
+    /(\d+(?:,\d+)?(?:\.\d+)?)\s*\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)(?:\s+([A-Za-z].{5,}))?$/,
+    
+    // Connected: 269(mg/dL)[ * ]74-106 Method
+    /(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+?)$/,
+    
+    // Multi-line (check next lines for continuation)
+    /(\d+(?:,\d+)?(?:\.\d+)?)\s*\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?(.*)$/
+  ]
+  
+  for (const pattern of patterns) {
+    const match = afterLabName.match(pattern)
+    if (match) {
+      let [, resultado, unidad, abnormalMarker = '', valorReferencia, metodo = ''] = match
+      
+      // Handle multi-line methods (check next lines)
+      if (!metodo && format.method && lineIndex + 1 < allLines.length) {
+        const nextLine = allLines[lineIndex + 1].trim()
+        if (nextLine.includes(format.method.split(' ')[0])) {
+          metodo = nextLine
+        }
+      }
+      
+      // Use expected values from format if missing
+      if (!metodo && format.method) metodo = format.method
+      if (!unidad && format.unit) unidad = format.unit
+      
+      return {
+        examen: labName,
+        resultado: parseFloat(resultado.replace(',', '.')),
+        unidad: unidad.trim(),
+        valorReferencia: valorReferencia.trim() || format.normalRange || '',
+        metodo: metodo.trim() || format.method || '',
+        tipoMuestra: detectSampleType(allLines, lineIndex),
+        isAbnormal: abnormalMarker.includes('*'),
+        abnormalIndicator: abnormalMarker.trim(),
+        systemCode: mapToSystemCode(labName),
+        category: format.category,
+        priority: format.priority,
+        confidence: 98, // High confidence for specific format matching
+        position: lineIndex,
+        context: line,
+        resultType: 'numeric'
+      }
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Extract observation lab format: LABNAME OBSERVATION
+ */
+function extractObservationLabFormat(
+  line: string,
+  labName: string,
+  format: ChileanLabFormat,
+  lineIndex: number,
+  allLines: string[]
+): ComprehensiveLabResult | null {
+  
+  const afterLabName = line.substring(line.indexOf(labName) + labName.length).trim()
+  
+  // Look for expected observation values
+  if (format.expectedValues) {
+    for (const expectedValue of format.expectedValues) {
+      if (afterLabName.includes(expectedValue)) {
+        return {
+          examen: labName,
+          resultado: expectedValue,
+          unidad: null,
+          valorReferencia: format.normalRange || '',
+          metodo: format.method || '',
+          tipoMuestra: detectSampleType(allLines, lineIndex),
+          isAbnormal: false, // Observations are usually not marked as abnormal
+          abnormalIndicator: '',
+          systemCode: mapToSystemCode(labName),
+          category: format.category,
+          priority: format.priority,
+          confidence: 98,
+          position: lineIndex,
+          context: line,
+          resultType: 'qualitative'
+        }
+      }
+    }
+  }
+  
+  // Fallback: extract first word after lab name
+  const words = afterLabName.split(/\s+/)
+  if (words.length > 0 && words[0].length > 2) {
+    return {
+      examen: labName,
+      resultado: words[0],
+      unidad: null,
+      valorReferencia: format.normalRange || '',
+      metodo: format.method || '',
+      tipoMuestra: detectSampleType(allLines, lineIndex),
+      isAbnormal: false,
+      abnormalIndicator: '',
+      systemCode: mapToSystemCode(labName),
+      category: format.category,
+      priority: format.priority,
+      confidence: 95,
+      position: lineIndex,
+      context: line,
+      resultType: 'qualitative'
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Extract qualitative lab format: LABNAME RESULT (UNIT) where result is text
+ */
+function extractQualitativeLabFormat(
+  line: string,
+  labName: string,
+  format: ChileanLabFormat,
+  lineIndex: number,
+  allLines: string[]
+): ComprehensiveLabResult | null {
+  
+  const afterLabName = line.substring(line.indexOf(labName) + labName.length).trim()
+  
+  // Look for expected qualitative values
+  if (format.expectedValues) {
+    for (const expectedValue of format.expectedValues) {
+      if (afterLabName.includes(expectedValue)) {
+        return {
+          examen: labName,
+          resultado: expectedValue,
+          unidad: format.unit || null,
+          valorReferencia: format.normalRange || '',
+          metodo: format.method || '',
+          tipoMuestra: detectSampleType(allLines, lineIndex),
+          isAbnormal: expectedValue !== 'Negativo' && expectedValue !== 'No reactivo',
+          abnormalIndicator: expectedValue !== 'Negativo' && expectedValue !== 'No reactivo' ? '[*]' : '',
+          systemCode: mapToSystemCode(labName),
+          category: format.category,
+          priority: format.priority,
+          confidence: 98,
+          position: lineIndex,
+          context: line,
+          resultType: 'qualitative'
+        }
+      }
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Extract calculated lab format: LABNAME RESULT
+ */
+function extractCalculatedLabFormat(
+  line: string,
+  labName: string,
+  format: ChileanLabFormat,
+  lineIndex: number,
+  allLines: string[]
+): ComprehensiveLabResult | null {
+  
+  const afterLabName = line.substring(line.indexOf(labName) + labName.length).trim()
+  
+  // Look for numeric result
+  const numericMatch = afterLabName.match(/(\d+(?:,\d+)?(?:\.\d+)?)/)
+  if (numericMatch) {
+    return {
+      examen: labName,
+      resultado: parseFloat(numericMatch[1].replace(',', '.')),
+      unidad: format.unit || null,
+      valorReferencia: format.normalRange || '',
+      metodo: format.method || '',
+      tipoMuestra: detectSampleType(allLines, lineIndex),
+      isAbnormal: false, // Calculated values need specific logic
+      abnormalIndicator: '',
+      systemCode: mapToSystemCode(labName),
+      category: format.category,
+      priority: format.priority,
+      confidence: 98,
+      position: lineIndex,
+      context: line,
+      resultType: 'calculated'
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Detect sample type from surrounding context
+ */
+function detectSampleType(allLines: string[], lineIndex: number): string {
+  // Look backwards for sample type indicators
+  for (let i = Math.max(0, lineIndex - 5); i < lineIndex; i++) {
+    const line = allLines[i]
+    if (line.includes('Tipo de Muestra : SUERO')) return 'SUERO'
+    if (line.includes('Tipo de Muestra : SANGRE TOTAL')) return 'SANGRE TOTAL + E.D.T.A.'
+    if (line.includes('Tipo de Muestra : ORINA')) return 'ORINA'
+  }
+  return 'SUERO' // Default
+}
+
+/**
+ * Map lab name to system code
+ */
+function mapToSystemCode(labName: string): string | null {
+  const mapping: Record<string, string> = {
+    // Glucose
+    'GLICEMIA EN AYUNO (BASAL)': 'glucose_fasting',
+    'HEMOGLOBINA GLICADA A1C': 'hba1c',
+    
+    // Thyroid
+    'H. TIROESTIMULANTE (TSH)': 'tsh',
+    'H. TIROXINA LIBRE (T4 LIBRE)': 't4_free',
+    
+    // Liver
+    'BILIRRUBINA TOTAL': 'bilirubin_total',
+    'BILIRRUBINA DIRECTA': 'bilirubin_direct',
+    'GOT (A.S.T)': 'ast',
+    'GPT (A.L.T)': 'alt',
+    'FOSF. ALCALINAS (ALP)': 'alkaline_phosphatase',
+    'G.G.T.': 'ggt',
+    'ALBÚMINA': 'albumin',
+    
+    // Kidney
+    'CREATININA': 'creatinine',
+    'VFG': 'egfr',
+    'NITROGENO UREICO (BUN)': 'bun',
+    'UREMIA (CALCULO)': 'urea_calculated',
+    'ÁCIDO URICO (URICEMIA)': 'uric_acid',
+    'MICROALBUMINURIA AISLADA': 'microalbumin',
+    'CREATINURIA AISLADA': 'creatinine_urine',
+    'MAU-RAC (calculo)': 'albumin_creatinine_ratio',
+    
+    // Electrolytes
+    'SODIO (Na) EN SANGRE': 'sodium',
+    'POTASIO (K) EN SANGRE': 'potassium',
+    'CLORO (Cl) EN SANGRE': 'chloride',
+    
+    // Lipids
+    'TRIGLICERIDOS': 'triglycerides',
+    'COLESTEROL TOTAL': 'cholesterol_total',
+    'COLESTEROL HDL': 'cholesterol_hdl',
+    'COLESTEROL LDL (CALCULO)': 'cholesterol_ldl',
+    'COLESTEROL VLDL (CALCULO)': 'cholesterol_vldl',
+    'CALCULO TOTAL/HDL': 'cholesterol_ratio',
+    
+    // Vitamins
+    'VITAMINA B12': 'vitamin_b12',
+    
+    // Blood Count
+    'HEMOGLOBINA': 'hemoglobin',
+    'HEMATOCRITO': 'hematocrit',
+    'RECUENTO GLOBULOS ROJOS': 'rbc',
+    'RECUENTO GLOBULOS BLANCOS': 'wbc',
+    'RECUENTO PLAQUETAS': 'platelets',
+    'V.C.M': 'mcv',
+    'H.C.M': 'mch',
+    'C.H.C.M': 'mchc',
+    
+    // Blood Differential
+    'EOSINOFILOS': 'eosinophils',
+    'BASOFILOS': 'basophils',
+    'LINFOCITOS': 'lymphocytes',
+    'MONOCITOS': 'monocytes',
+    'NEUTROFILOS': 'neutrophils',
+    'BACILIFORMES': 'bands',
+    'JUVENILES': 'juvenile',
+    'MIELOCITOS': 'myelocytes',
+    'PROMIELOCITOS': 'promyelocytes',
+    'BLASTOS': 'blasts',
+    'V.H.S.': 'esr',
+    
+    // Urine Complete
+    'COLOR': 'urine_color',
+    'ASPECTO': 'urine_appearance',
+    'PH': 'urine_ph',
+    'DENSIDAD': 'urine_density',
+    'PROTEINAS': 'urine_protein',
+    'GLUCOSA': 'urine_glucose',
+    'CETONAS': 'urine_ketones',
+    'SANGRE EN ORINA': 'urine_blood',
+    'UROBILINOGENO': 'urine_urobilinogen',
+    'BILIRRUBINA': 'urine_bilirubin',
+    'NITRITOS': 'urine_nitrites',
+    'LEUCOCITOS': 'urine_leukocytes',
+    
+    // Urine Sediment
+    'HEMATIES POR CAMPO': 'urine_rbc',
+    'LEUCOCITOS POR CAMPO': 'urine_wbc',
+    'CELULAS EPITELIALES': 'urine_epithelial_cells',
+    'MUCUS': 'urine_mucus',
+    'CRISTALES': 'urine_crystals',
+    'CILINDROS': 'urine_casts',
+    'BACTERIAS': 'urine_bacteria',
+    
+    // Serology
+    'R.P.R.': 'rpr'
+  }
+  return mapping[labName] || null
 }
 
 /**
