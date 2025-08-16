@@ -171,13 +171,25 @@ export async function POST(request: NextRequest) {
             return acc
           }, {} as Record<string, number>),
           
-          // Results by priority
-          resultsByPriority: finalResult.labResults.reduce((acc, result) => {
-            if (result.priority) {
-              acc[result.priority] = (acc[result.priority] || 0) + 1
-            }
-            return acc
-          }, {} as Record<string, number>)
+          // Results by priority (ordered by severity)
+          resultsByPriority: (() => {
+            const priorityCounts = finalResult.labResults.reduce((acc, result) => {
+              if (result.priority) {
+                acc[result.priority] = (acc[result.priority] || 0) + 1
+              }
+              return acc
+            }, {} as Record<string, number>)
+            
+            // Order by clinical severity
+            const orderedPriorities = ['crítico', 'severo', 'moderado', 'leve', 'normal', 'desconocido']
+            const ordered: Record<string, number> = {}
+            orderedPriorities.forEach(priority => {
+              if (priorityCounts[priority]) {
+                ordered[priority] = priorityCounts[priority]
+              }
+            })
+            return ordered
+          })()
         }
       }
     })

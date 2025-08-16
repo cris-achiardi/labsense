@@ -235,7 +235,7 @@ const CHILEAN_LAB_FORMATS: Record<string, ChileanLabFormat> = {
   'CREATINURIA AISLADA': {
     unit: 'mg/dL',
     method: 'Cálculo',
-    normalRange: null,
+    normalRange: '0.6-1.3', // General range (0.7-1.3 for men, 0.6-1.1 for women)
     type: 'numeric',
     category: 'kidney',
     priority: 'low'
@@ -2764,6 +2764,12 @@ function createLabResult(params: {
   if (typeof params.resultado === 'number' && params.valorReferencia) {
     const severityResult = calculateClinicalSeverity(params.resultado, params.valorReferencia, params.unidad || '')
     priority = severityResult.severity
+    // If still 'desconocido' but we have abnormal indicators, use abnormal logic
+    if (priority === 'desconocido' && params.isAbnormal) {
+      priority = 'moderado'
+    } else if (priority === 'desconocido') {
+      priority = 'normal' // Assume normal if no range and no abnormal indicators
+    }
   } else {
     // For qualitative results, use abnormal status
     priority = params.isAbnormal ? 'moderado' : 'normal'
@@ -2875,6 +2881,15 @@ function calculateClinicalSeverity(
   const upToMatch = normalizedRange.match(/Hasta\s+(\d+(?:\.\d+)?)/)
   if (upToMatch) {
     maxValue = parseFloat(upToMatch[1])
+  }
+  
+  // Handle qualitative normal references
+  if (normalizedRange.toLowerCase().includes('normal')) {
+    return {
+      severity: 'normal',
+      isAbnormal: false,
+      deviationPercent: 0
+    }
   }
   
   // If we couldn't parse the range, return unknown
