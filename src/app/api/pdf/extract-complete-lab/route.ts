@@ -24,9 +24,9 @@ function extractFolioFromText(text: string): string | null {
 
 function extractDateFromText(text: string, type: string): string | null {
   const patterns = {
-    ingreso: /Fecha\s+Ingreso\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
-    muestra: /Toma\s+Muestra\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i,
-    validacion: /Fecha\s+Validación\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i
+    ingreso: /Fecha\s+de\s+Ingreso\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2})/i,
+    muestra: /Toma\s+de\s+Muestra\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2})/i,
+    validacion: /Fecha\s+de\s+Validación\s*:?\s*(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{1,2}:\d{1,2})/i
   }
   const pattern = patterns[type as keyof typeof patterns]
   if (!pattern) return null
