@@ -47,7 +47,8 @@ export function extractAllLabResults(text: string): ComprehensiveLabResult[] {
       ...extractQualitativeResults(section, healthMarkerLookup, tipoMuestra),
       ...extractCalculatedResults(section, healthMarkerLookup, tipoMuestra),
       ...extractMicroscopyResults(section, healthMarkerLookup, tipoMuestra),
-      ...extractTabularResults(section, healthMarkerLookup, tipoMuestra)
+      ...extractTabularResults(section, healthMarkerLookup, tipoMuestra),
+      ...extractEmbeddedMultiResults(section, healthMarkerLookup, tipoMuestra)
     ]
     
     results.push(...sectionResults)
@@ -79,7 +80,19 @@ function extractNumericResults(
     /([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,40})(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(\[?\s?\*?\s?\]?)?\s*(.+)/g,
     
     // Spaced pattern: HEMOGLOBINA    14.2    (g/dL)    12.3 - 15.3
-    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s{2,}(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(.+)/gm
+    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s\.\(\)\/\-]{5,50})\s{2,}(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+(.+)/gm,
+    
+    // Enhanced embedded patterns for missing results
+    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|HEMOGLOBINA|HEMATOCRITO|VCM|HCM|CHCM|PLAQUETAS|LEUCOCITOS|NEUTROFILOS|LINFOCITOS|MONOCITOS|EOSINOFILOS|BASOFILOS|HEMOGLOBINA GLICOSILADA|HBA1C)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
+    
+    // Blood count embedded: RECUENTO GLOBULOS ROJOS4,6(x10^6/uL) HEMATOCRITO42,0(%)
+    /(RECUENTO GLOBULOS [A-Z]+|HEMATOCRITO|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS BLANCOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
+    
+    // Electrolytes embedded: SODIO (Na) EN SANGRE136,7(mEq/L) POTASIO (K)
+    /(SODIO|POTASIO|CLORO|BICARBONATO)\s*(?:\([^)]+\))?\s*(?:EN SANGRE)?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi,
+    
+    // Liver enzymes: ALT, AST variations
+    /(ALT|AST|GGT|LDH|BILIRRUBINA DIRECTA|BILIRRUBINA INDIRECTA|PROTEINAS TOTALES|ALBUMINA)\s*(?:\([^)]+\))?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*)/gi
   ]
   
   for (const pattern of numericPatterns) {
@@ -131,7 +144,13 @@ function extractQualitativeResults(
     /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{3,30})\s+(Claro|Turbio|Amarillo|Rojizo|Verde|Transparente|Opaco)\s*$/gm,
     
     // CELULAS EPITELIALES No se observan
-    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})\s+(No se observan|Escasa cantidad|Abundante|Moderada cantidad|Presentes|Ausentes)\s*$/gm
+    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{5,40})\s+(No se observan|Escasa cantidad|Abundante|Moderada cantidad|Presentes|Ausentes)\s*$/gm,
+    
+    // Enhanced patterns for missing qualitative results
+    /([A-ZÁÉÍÓÚÑ\s]{3,40})\s+(No procesado|No procesado por falta de insumos|Procesado|Normal|Anormal)\s*([^\n]*)/gm,
+    
+    // Color and microscopy patterns
+    /([A-ZÁÉÍÓÚÑ\s]{3,40})\s+(Amarillo claro|Amarillo|Transparente|Opaco|Cristalino)\s*([^\n]*)/gm
   ]
   
   for (const pattern of qualitativePatterns) {
@@ -306,6 +325,74 @@ function extractTabularResults(
         abnormalIndicator: line.includes('[*]') ? '[*]' : '',
         resultType: isNaN(parseFloat(resultado.replace(',', '.'))) ? 'qualitative' : 'numeric',
         confidence: 75,
+        position: text.indexOf(fullMatch),
+        context: fullMatch,
+        healthMarkerLookup
+      })
+      
+      results.push(labResult)
+    }
+  }
+  
+  return results
+}
+
+/**
+ * Extract embedded multi-results from complex text blocks
+ * Handles cases like: COLESTEROL TOTAL213(mg/dL)Normal: < 200 COLESTEROL HDL53(mg/dL)Bajo
+ */
+function extractEmbeddedMultiResults(
+  text: string, 
+  healthMarkerLookup: Map<string, HealthMarkerMapping>, 
+  tipoMuestra: string
+): ComprehensiveLabResult[] {
+  const results: ComprehensiveLabResult[] = []
+  
+  // Pattern to extract multiple embedded results from complex blocks
+  const embeddedPatterns = [
+    // Blood count embedded results: HEMATOCRITO42,0(%) 35-47 HEMOGLOBINA14,2(g/dL) 12,3-15,3
+    /(HEMATOCRITO|HEMOGLOBINA|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS [A-Z]+)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\.,\s<>]+)?/gi,
+    
+    // Lipid panel: COLESTEROL TOTAL213(mg/dL)Bajo (deseable): < 200 COLESTEROL HDL53(mg/dL)
+    /(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|COLESTEROL VLDL|TRIGLICERIDOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-Z]*?)(?=[A-Z]{2,}|$)/gi,
+    
+    // Blood differential: EOSINOFILOS3(%) 2-4 BASOFILOS1(%) 0-1 LINFOCITOS32(%)
+    /(EOSINOFILOS|BASOFILOS|LINFOCITOS|MONOCITOS|NEUTROFILOS|BACILIFORMES|JUVENILES|MIELOCITOS|PROMIELOCITOS|BLASTOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\s]*)?/gi,
+    
+    // Electrolytes: SODIO (Na) EN SANGRE136,7(mEq/L) 136-145 POTASIO (K) EN SANGRE5,0(mEq/L)
+    /(SODIO|POTASIO|CLORO)\s*(?:\([^)]+\))?\s*EN SANGRE(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([0-9\-\s,\.]*)?/gi,
+    
+    // Calculated values: CALCULO TOTAL/HDL4,02  COLESTEROL VLDL (CALCULO)27,2(mg/dL)
+    /(CALCULO [A-Z\/]+|[A-Z\s]+ \(CALCULO\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([^A-Z]*)?/gi,
+    
+    // Kidney function: VFG64,4(mL/min/1.73 mt²) Mayor a 60 UREMIA (CALCULO)38,5(mg/dL)
+    /(VFG|UREMIA \(CALCULO\)|CREATINURIA [A-Z]+|MAU-RAC \(calculo\))(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*([^A-Z]*)?/gi
+  ]
+  
+  for (const pattern of embeddedPatterns) {
+    let match
+    while ((match = pattern.exec(text)) !== null) {
+      const [fullMatch, examen, resultado, unidad, valorReferencia = ''] = match
+      
+      if (isAlreadyExtracted(results, examen)) continue
+      
+      // Clean and parse values
+      const cleanExamen = examen.replace(/\(CALCULO\)/, '').trim()
+      const cleanResultado = parseFloat(resultado.replace(',', '.'))
+      const cleanUnidad = unidad.trim()
+      const cleanReferencia = valorReferencia.trim()
+      
+      const labResult = createLabResult({
+        examen: cleanExamen,
+        resultado: cleanResultado,
+        unidad: cleanUnidad,
+        valorReferencia: cleanReferencia || null,
+        metodo: null,
+        tipoMuestra,
+        isAbnormal: text.includes('[*]') || text.includes('[ * ]'),
+        abnormalIndicator: text.includes('[*]') ? '[*]' : '',
+        resultType: 'numeric',
+        confidence: 85,
         position: text.indexOf(fullMatch),
         context: fullMatch,
         healthMarkerLookup
