@@ -13,6 +13,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth/config'
 import { extractCompleteLabReport } from '@/lib/pdf-parsing/lab-results-extractor'
+import { extractAllLabResults } from '@/lib/pdf-parsing/comprehensive-lab-extractor'
+import { extractTextFromPDF } from '@/lib/pdf-parsing/pdf-text-extractor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,9 +58,28 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const pdfBuffer = Buffer.from(arrayBuffer)
 
-    // Extract complete lab report
+    // Extract complete lab report using comprehensive extractor
+    console.log('🚀 Using comprehensive lab extractor for maximum coverage...')
+    
+    // First extract text from PDF
+    const textExtraction = await extractTextFromPDF(pdfBuffer)
+    if (!textExtraction.success) {
+      return NextResponse.json(
+        { 
+          error: textExtraction.error || 'Error al extraer texto del PDF',
+          success: false
+        },
+        { status: 400 }
+      )
+    }
+    
+    // Use comprehensive extractor for maximum lab result coverage
+    const comprehensiveResults = extractAllLabResults(textExtraction.fullText)
+    console.log(`🎯 Comprehensive extractor found ${comprehensiveResults.length} results`)
+    
+    // Also get patient info and metadata from the original extractor
     const extractionResult = await extractCompleteLabReport(pdfBuffer)
-
+    
     if (!extractionResult.success) {
       return NextResponse.json(
         { 
@@ -68,15 +89,55 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // Merge comprehensive results with patient info and metadata
+    const enhancedResult = {
+      ...extractionResult,
+      labResults: comprehensiveResults.length > extractionResult.labResults.length 
+        ? comprehensiveResults.map(cr => ({
+            examen: cr.examen,
+            resultado: cr.resultado,
+            unidad: cr.unidad,
+            valorReferencia: cr.valorReferencia,
+            metodo: cr.metodo,
+            tipoMuestra: cr.tipoMuestra,
+            isAbnormal: cr.isAbnormal,
+            abnormalIndicator: cr.abnormalIndicator,
+            systemCode: cr.systemCode,
+            category: cr.category,
+            priority: cr.priority,
+            confidence: cr.confidence,
+            position: cr.position,
+            context: cr.context
+          }))
+        : extractionResult.labResults,
+      metadata: {
+        ...extractionResult.metadata,
+        totalResults: comprehensiveResults.length > extractionResult.labResults.length 
+          ? comprehensiveResults.length 
+          : extractionResult.metadata.totalResults,
+        abnormalCount: comprehensiveResults.length > extractionResult.labResults.length
+          ? comprehensiveResults.filter(r => r.isAbnormal).length
+          : extractionResult.metadata.abnormalCount,
+        criticalCount: comprehensiveResults.length > extractionResult.labResults.length
+          ? comprehensiveResults.filter(r => r.priority === 'critical' && r.isAbnormal).length
+          : extractionResult.metadata.criticalCount
+      }
+    }
+    
+    console.log(`✅ Enhanced extraction: ${enhancedResult.labResults.length} total results (${enhancedResult.metadata.abnormalCount} abnormal, ${enhancedResult.metadata.criticalCount} critical)`)
+    
+    const finalResult = enhancedResult
 
     // Log successful extraction for audit
     console.log('Complete lab extraction by user:', session.user.email, {
-      folio: extractionResult.metadata.folio,
-      patientRUT: extractionResult.patient?.rut ? '***' : null, // Anonymized
-      totalResults: extractionResult.metadata.totalResults,
-      abnormalCount: extractionResult.metadata.abnormalCount,
-      criticalCount: extractionResult.metadata.criticalCount,
-      confidence: extractionResult.confidence
+      folio: finalResult.metadata.folio,
+      patientRUT: finalResult.patient?.rut ? '***' : null, // Anonymized
+      totalResults: finalResult.metadata.totalResults,
+      abnormalCount: finalResult.metadata.abnormalCount,
+      criticalCount: finalResult.metadata.criticalCount,
+      confidence: finalResult.confidence,
+      extractorUsed: comprehensiveResults.length > extractionResult.labResults.length ? 'comprehensive' : 'standard'
     })
 
     // Return complete extraction result
@@ -84,26 +145,26 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         // Patient information
-        patient: extractionResult.patient,
+        patient: finalResult.patient,
         
         // Complete lab results
-        labResults: extractionResult.labResults,
+        labResults: finalResult.labResults,
         
         // Lab report metadata
-        metadata: extractionResult.metadata,
+        metadata: finalResult.metadata,
         
         // Overall confidence
-        confidence: extractionResult.confidence,
+        confidence: finalResult.confidence,
         
         // Summary statistics
         summary: {
-          totalResults: extractionResult.metadata.totalResults,
-          abnormalResults: extractionResult.metadata.abnormalCount,
-          criticalResults: extractionResult.metadata.criticalCount,
-          normalResults: extractionResult.metadata.totalResults - extractionResult.metadata.abnormalCount,
+          totalResults: finalResult.metadata.totalResults,
+          abnormalResults: finalResult.metadata.abnormalCount,
+          criticalResults: finalResult.metadata.criticalCount,
+          normalResults: finalResult.metadata.totalResults - finalResult.metadata.abnormalCount,
           
           // Results by category
-          resultsByCategory: extractionResult.labResults.reduce((acc, result) => {
+          resultsByCategory: finalResult.labResults.reduce((acc, result) => {
             if (result.category) {
               acc[result.category] = (acc[result.category] || 0) + 1
             }
@@ -111,7 +172,7 @@ export async function POST(request: NextRequest) {
           }, {} as Record<string, number>),
           
           // Results by priority
-          resultsByPriority: extractionResult.labResults.reduce((acc, result) => {
+          resultsByPriority: finalResult.labResults.reduce((acc, result) => {
             if (result.priority) {
               acc[result.priority] = (acc[result.priority] || 0) + 1
             }
