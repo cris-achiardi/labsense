@@ -51,49 +51,47 @@ CREATE INDEX IF NOT EXISTS idx_health_markers_tipo_muestra ON health_markers(tip
 
 -- Update normal_ranges table to support more Chilean lab markers
 -- Add comprehensive Chilean healthcare normal ranges
-INSERT INTO normal_ranges (marker_type, min_value, max_value, unit, source, raw_text) VALUES
+INSERT INTO normal_ranges (marker_type, min_value, max_value, unit, source) VALUES
 -- Additional glucose markers
-('GLICEMIA EN AYUNO (BASAL)', 74, 106, 'mg/dL', 'Chilean Healthcare Standards', '74 - 106'),
-('GLUCOSA EN AYUNO', 74, 106, 'mg/dL', 'Chilean Healthcare Standards', '74 - 106'),
+('GLICEMIA EN AYUNO (BASAL)', 74, 106, 'mg/dL', 'Chilean Healthcare Standards'),
+('GLUCOSA EN AYUNO', 74, 106, 'mg/dL', 'Chilean Healthcare Standards'),
 
 -- HDL/LDL Cholesterol
-('COLESTEROL HDL', 40, 999, 'mg/dL', 'Chilean Healthcare Standards', '> 40'),
-('COLESTEROL LDL', 0, 130, 'mg/dL', 'Chilean Healthcare Standards', '< 130'),
+('COLESTEROL HDL', 40, 999, 'mg/dL', 'Chilean Healthcare Standards'),
+('COLESTEROL LDL', 0, 130, 'mg/dL', 'Chilean Healthcare Standards'),
 
 -- Liver enzymes with Chilean terminology
-('GOT (A.S.T)', 10, 40, 'U/L', 'Chilean Healthcare Standards', '10 - 40'),
-('GPT (A.L.T)', 7, 56, 'U/L', 'Chilean Healthcare Standards', '7 - 56'),
-('FOSF. ALCALINAS', 46, 116, 'U/L', 'Chilean Healthcare Standards', '46 - 116'),
-('FOSFATASA ALCALINA', 46, 116, 'U/L', 'Chilean Healthcare Standards', '46 - 116'),
+('GOT (A.S.T)', 10, 40, 'U/L', 'Chilean Healthcare Standards'),
+('GPT (A.L.T)', 7, 56, 'U/L', 'Chilean Healthcare Standards'),
+('FOSF. ALCALINAS', 46, 116, 'U/L', 'Chilean Healthcare Standards'),
+('FOSFATASA ALCALINA', 46, 116, 'U/L', 'Chilean Healthcare Standards'),
 
 -- Kidney function
-('CREATININA', 0.6, 1.2, 'mg/dL', 'Chilean Healthcare Standards', '0.6 - 1.2'),
-('UREA', 15, 45, 'mg/dL', 'Chilean Healthcare Standards', '15 - 45'),
-('ACIDO URICO', 3.5, 7.0, 'mg/dL', 'Chilean Healthcare Standards', '3.5 - 7.0'),
+('CREATININA', 0.6, 1.2, 'mg/dL', 'Chilean Healthcare Standards'),
+('UREA', 15, 45, 'mg/dL', 'Chilean Healthcare Standards'),
+('ACIDO URICO', 3.5, 7.0, 'mg/dL', 'Chilean Healthcare Standards'),
 
 -- Blood count
-('HEMOGLOBINA', 12.0, 16.0, 'g/dL', 'Chilean Healthcare Standards', '12.0 - 16.0'),
-('HEMATOCRITO', 36, 48, '%', 'Chilean Healthcare Standards', '36 - 48'),
-('GLOBULOS ROJOS', 4.0, 5.5, 'mill/mm³', 'Chilean Healthcare Standards', '4.0 - 5.5'),
-('GLOBULOS BLANCOS', 4000, 11000, '/mm³', 'Chilean Healthcare Standards', '4000 - 11000'),
-('PLAQUETAS', 150000, 450000, '/mm³', 'Chilean Healthcare Standards', '150000 - 450000'),
+('HEMOGLOBINA', 12.0, 16.0, 'g/dL', 'Chilean Healthcare Standards'),
+('HEMATOCRITO', 36, 48, '%', 'Chilean Healthcare Standards'),
+('GLOBULOS ROJOS', 4.0, 5.5, 'mill/mm³', 'Chilean Healthcare Standards'),
+('GLOBULOS BLANCOS', 4000, 11000, '/mm³', 'Chilean Healthcare Standards'),
+('PLAQUETAS', 150000, 450000, '/mm³', 'Chilean Healthcare Standards'),
 
 -- Thyroid hormones
-('T4 LIBRE', 0.8, 1.8, 'ng/dL', 'Chilean Healthcare Standards', '0.8 - 1.8'),
-('T3 LIBRE', 2.3, 4.2, 'pg/mL', 'Chilean Healthcare Standards', '2.3 - 4.2'),
+('T4 LIBRE', 0.8, 1.8, 'ng/dL', 'Chilean Healthcare Standards'),
+('T3 LIBRE', 2.3, 4.2, 'pg/mL', 'Chilean Healthcare Standards'),
 
 -- Other important markers
-('PROTEINA C REACTIVA', 0, 3, 'mg/L', 'Chilean Healthcare Standards', '< 3'),
-('PCR', 0, 3, 'mg/L', 'Chilean Healthcare Standards', '< 3'),
-('FERRITINA', 15, 300, 'ng/mL', 'Chilean Healthcare Standards', '15 - 300'),
-('VITAMINA D', 30, 100, 'ng/mL', 'Chilean Healthcare Standards', '30 - 100'),
-('VITAMINA B12', 200, 900, 'pg/mL', 'Chilean Healthcare Standards', '200 - 900')
-
-ON CONFLICT (marker_type, unit, is_active) DO NOTHING;
+('PROTEINA C REACTIVA', 0, 3, 'mg/L', 'Chilean Healthcare Standards'),
+('PCR', 0, 3, 'mg/L', 'Chilean Healthcare Standards'),
+('FERRITINA', 15, 300, 'ng/mL', 'Chilean Healthcare Standards'),
+('VITAMINA D', 30, 100, 'ng/mL', 'Chilean Healthcare Standards'),
+('VITAMINA B12', 200, 900, 'pg/mL', 'Chilean Healthcare Standards');
 
 -- Create function to extract folio from lab report for duplicate checking
 CREATE OR REPLACE FUNCTION check_duplicate_folio()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   -- Check if folio already exists (only if folio is provided)
   IF NEW.folio IS NOT NULL THEN
@@ -104,7 +102,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger to prevent duplicate folios
 CREATE TRIGGER trigger_check_duplicate_folio
@@ -120,7 +118,7 @@ CREATE OR REPLACE FUNCTION store_complete_lab_extraction(
   p_file_name TEXT,
   p_file_path TEXT,
   p_file_size INTEGER
-) RETURNS UUID AS $
+) RETURNS UUID AS $$
 DECLARE
   patient_id UUID;
   lab_report_id UUID;
@@ -262,7 +260,7 @@ BEGIN
   
   RETURN lab_report_id;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Grant permissions for the new function
 GRANT EXECUTE ON FUNCTION store_complete_lab_extraction TO authenticated;

@@ -192,6 +192,8 @@ function extractHealthcareContext(text: string): {
 /**
  * Extracts individual lab results from text using Chilean 5-column format
  * Format: Examen | Resultado | Unidad | Valor de Referencia | Método
+ * 
+ * Updated to use improved extraction patterns
  */
 function extractLabResults(text: string): LabResult[] {
   const results: LabResult[] = []
@@ -200,9 +202,17 @@ function extractLabResults(text: string): LabResult[] {
   // Split text into lines for processing
   const lines = text.split('\n')
   
+  // Debug: Log some lines to understand the format
+  console.log('🔍 Analyzing PDF text structure:')
+  lines.slice(0, 20).forEach((line, i) => {
+    if (line.trim().length > 10) {
+      console.log(`Line ${i}: "${line}"`)
+    }
+  })
+  
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
-    if (!line) continue
+    if (!line || line.length < 10) continue // Skip very short lines
     
     // Look for health marker names in the line
     const upperLine = line.toUpperCase()
@@ -216,24 +226,172 @@ function extractLabResults(text: string): LabResult[] {
     for (const [searchTerm, marker] of markerEntries) {
       if (upperLine.includes(searchTerm)) {
         foundMarker = marker
+        console.log(`✅ Found marker: ${searchTerm} in line: "${line}"`)
         break
       }
     }
     
     if (foundMarker) {
       // Try to extract the complete lab result from this line and surrounding context
-      const labResult = parseLabResultLine(line, foundMarker, i, lines)
+      const labResult = parseLabResultLineImproved(line, foundMarker, i, lines)
       if (labResult) {
+        console.log(`✅ Extracted lab result: ${labResult.examen} = ${labResult.resultado}`)
         results.push(labResult)
+      } else {
+        console.log(`❌ Failed to parse lab result from: "${line}"`)
       }
     }
   }
   
+  console.log(`🎯 Total lab results extracted: ${results.length}`)
   return results
 }
 
 /**
- * Parses a single lab result line using Chilean format patterns
+ * Improved lab result parsing with multiple strategies
+ */
+function parseLabResultLineImproved(
+  line: string,
+  marker: HealthMarkerMapping,
+  lineIndex: number,
+  allLines: string[]
+): LabResult | null {
+  
+  // Get context (current line + next few lines)
+  const contextLines = allLines.slice(lineIndex, Math.min(lineIndex + 3, allLines.length))
+  const context = contextLines.join(' ')
+  
+  console.log(`🔍 Parsing line: "${line}"`)
+  console.log(`📝 Context: "${context}"`)
+  
+  // Strategy 1: Try different separator patterns
+  const patterns = [
+    // Pattern 1: Multiple spaces
+    /^(.+?)\s{2,}(.+?)\s{2,}\(([^)]+)\)\s{2,}(.+?)(?:\s{2,}(.+))?$/,
+    // Pattern 2: Pipe separators
+    /^(.+?)\s*\|\s*(.+?)\s*\|\s*\(([^)]+)\)\s*\|\s*(.+?)\s*\|\s*(.+)$/,
+    // Pattern 3: Tab separators
+    /^(.+?)\t+(.+?)\t+\(([^)]+)\)\t+(.+?)(?:\t+(.+))?$/,
+    // Pattern 4: Mixed separators
+    /^(.+?)\s+(\d+(?:\.\d+)?)\s+\(([^)]+)\)\s+(.+?)(?:\s+([A-Za-z].+))?$/,
+    // Pattern 5: Very flexible pattern
+    /^(.+?)\s+(.+?)\s+\(([^)]+)\)\s+(.+?)(?:\s+(.+))?$/
+  ]
+  
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i]
+    const match = line.match(pattern) || context.match(pattern)
+    
+    if (match) {
+      console.log(`✅ Pattern ${i + 1} matched:`, match)
+      const [, examen, resultado, unidad, valorReferencia, metodo = ''] = match
+      
+      if (examen && resultado && unidad && valorReferencia) {
+        return createLabResultFromMatch(examen, resultado, unidad, valorReferencia, metodo, marker, lineIndex, context)
+      }
+    }
+  }
+  
+  // Strategy 2: Try splitting by whitespace and reconstruct
+  const parts = line.split(/\s+/)
+  if (parts.length >= 4) {
+    console.log(`🔧 Trying whitespace split:`, parts)
+    
+    // Find the numeric result
+    let resultIndex = -1
+    for (let i = 1; i < parts.length; i++) {
+      if (/^\d+(\.\d+)?$/.test(parts[i])) {
+        resultIndex = i
+        break
+      }
+    }
+    
+    if (resultIndex > 0) {
+      const examen = parts.slice(0, resultIndex).join(' ')
+      const resultado = parts[resultIndex]
+      
+      // Look for unit in parentheses
+      let unidad = ''
+      let unitIndex = -1
+      for (let i = resultIndex + 1; i < parts.length; i++) {
+        if (parts[i].includes('(') && parts[i].includes(')')) {
+          unidad = parts[i].replace(/[()]/g, '')
+          unitIndex = i
+          break
+        }
+      }
+      
+      if (unitIndex > 0) {
+        const valorReferencia = parts.slice(unitIndex + 1).join(' ')
+        return createLabResultFromMatch(examen, resultado, unidad, valorReferencia, '', marker, lineIndex, context)
+      }
+    }
+  }
+  
+  console.log(`❌ No pattern matched for line: "${line}"`)
+  return null
+}
+
+/**
+ * Create lab result from matched components
+ */
+function createLabResultFromMatch(
+  examen: string,
+  resultado: string,
+  unidad: string,
+  valorReferencia: string,
+  metodo: string,
+  marker: HealthMarkerMapping,
+  lineIndex: number,
+  context: string
+): LabResult {
+  
+  // Clean up values
+  examen = examen.trim()
+  resultado = resultado.trim()
+  unidad = unidad.trim().replace(/[()]/g, '')
+  valorReferencia = valorReferencia.trim()
+  metodo = metodo.trim()
+  
+  // Check for abnormal indicators
+  const abnormalIndicators = ['[ * ]', '[*]', '(*)', '*']
+  let isAbnormal = false
+  let abnormalIndicator = ''
+  
+  for (const indicator of abnormalIndicators) {
+    if (valorReferencia.includes(indicator) || context.includes(indicator)) {
+      isAbnormal = true
+      abnormalIndicator = indicator
+      break
+    }
+  }
+  
+  // Parse result value
+  const parsedResultado = parseResultValue(resultado)
+  
+  // Calculate confidence
+  const confidence = calculateLabResultConfidence(examen, resultado, unidad, valorReferencia, marker)
+  
+  return {
+    examen,
+    resultado: parsedResultado,
+    unidad,
+    valorReferencia,
+    metodo,
+    tipoMuestra: 'SUERO', // Default
+    isAbnormal,
+    abnormalIndicator,
+    systemCode: marker.systemCode,
+    category: marker.category,
+    priority: marker.priority,
+    confidence,
+    position: lineIndex,
+    context: context.substring(0, 200)
+  }
+}
+
+/**
+ * Original parsing function (kept as fallback)
  */
 function parseLabResultLine(
   currentLine: string, 
