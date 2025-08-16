@@ -109,28 +109,176 @@
 - [x] Create health marker filtering options
 - [x] Build priority level filtering
 
-## Phase 5: Healthcare Features
+## Phase 5: MVP Core Features (Critical Implementation) 🚀
 
-### Task 11: PDF Viewing (Requirement 12)
+**Priority:** HIGHEST - This is the true MVP that makes the system functional
+**Status:** Ready to implement after PDF processing breakthrough
+**Goal:** Complete end-to-end lab processing with proper data integrity
+
+### Task 11: Enhanced PDF Data Extraction (Critical MVP Feature)
+**Priority:** CRITICAL - System currently only extracts patient info, needs complete lab data
+- [ ] **11.1 Complete Lab Results Extraction**
+  - Extract all health markers from PDF (not just patient info)
+  - Parse resultado, unidad, valor de referencia, método for each test
+  - Handle multiple test types: SUERO, SANGRE TOTAL, ORINA
+  - Extract abnormal indicators ([ * ] markers) for each result
+  - _Requirements: 3.1, 3.2, 4.1_
+
+- [ ] **11.2 Folio-Based Duplicate Prevention**
+  - Extract folio number from PDF as unique exam identifier
+  - Prevent duplicate lab reports using folio + toma_muestra date
+  - Allow same patient multiple exams with different folios
+  - Update database schema to enforce folio uniqueness
+  - _Requirements: 2.2, 6.1_
+
+- [ ] **11.3 Complete Date Extraction**
+  - Extract fecha_ingreso, toma_muestra, fecha_validacion
+  - Use toma_muestra as primary date for medical timeline
+  - Parse Chilean date format (DD/MM/YYYY) correctly
+  - Store all dates for complete audit trail
+  - _Requirements: 6.2_
+
+- [ ] **11.4 Healthcare Context Extraction**
+  - Extract profesional_solicitante (requesting doctor)
+  - Extract procedencia (primary care center)
+  - Extract tipo_muestra for each test (SUERO, SANGRE, ORINA)
+  - Store complete healthcare workflow context
+  - _Requirements: 8.1, 8.2_
+
+### Task 12: Comprehensive Normal Ranges Database (Critical MVP Feature)
+**Priority:** CRITICAL - Currently only 5 ranges, need complete Chilean lab standards
+- [ ] **12.1 Extract All Normal Ranges from PDF Sample**
+  - Parse all health markers from docs/pdf-sample
+  - Extract reference ranges for each marker type
+  - Handle multiple reference formats (numeric ranges, descriptive, categorical)
+  - Map Spanish marker names to standardized codes
+  - _Requirements: 7.1, 7.2_
+
+- [ ] **12.2 Chilean Healthcare Standards Implementation**
+  - Implement all markers from PDF analysis:
+    - GLICEMIA EN AYUNO (74-106 mg/dL)
+    - HEMOGLOBINA GLICADA A1C (4-6%)
+    - H. TIROESTIMULANTE TSH (0.55-4.78 μUI/mL)
+    - TRIGLICERIDOS (<150 mg/dL)
+    - COLESTEROL TOTAL (<200 mg/dL deseable)
+    - COLESTEROL HDL, LDL ranges
+    - GOT (AST), GPT (ALT) liver enzymes
+    - FOSF. ALCALINAS (46-116 U/L)
+    - All other markers from PDF sample
+  - _Requirements: 7.3, 4.2_
+
+- [ ] **12.3 Reference Range Parser Enhancement**
+  - Handle Chilean terminology: "Hasta", "Menor a", "Mayor a"
+  - Parse categorical ranges: "Bajo (deseable): < 200"
+  - Extract gender-specific ranges when present
+  - Store age-specific ranges for pediatric/adult/elderly
+  - _Requirements: 7.4_
+
+### Task 13: Complete Lab Report Processing Pipeline (Critical MVP Feature)
+**Priority:** CRITICAL - End-to-end processing from PDF to prioritized patient
+- [ ] **13.1 Full Lab Report Storage**
+  - Store complete lab report with all extracted health markers
+  - Link all health markers to single lab report via folio
+  - Store raw PDF text and parsed structured data
+  - Maintain relationship between patient, lab_report, and health_markers
+  - _Requirements: 6.3, 6.4_
+
+- [ ] **13.2 Abnormal Value Detection for All Markers**
+  - Run abnormal detection on ALL extracted health markers
+  - Store abnormal flags for each marker with severity classification
+  - Calculate comprehensive priority score using all abnormal values
+  - Generate Spanish clinical reasoning for each abnormal flag
+  - _Requirements: 4.3, 4.4, 5.1_
+
+- [ ] **13.3 Patient Priority Calculation**
+  - Calculate priority score using ALL abnormal markers (not just demo data)
+  - Apply age factors, clinical significance weights
+  - Update prioritized_patients table with real calculated scores
+  - Ensure priority reflects actual medical urgency
+  - _Requirements: 5.2, 5.3_
+
+- [ ] **13.4 Complete Audit Trail**
+  - Log every step of PDF processing pipeline
+  - Track confidence scores for each extracted element
+  - Store processing timestamps and user context
+  - Enable full traceability for healthcare compliance
+  - _Requirements: 8.3, 9.1_
+
+### Task 14: Database Schema Fixes (Critical MVP Feature)
+**Priority:** CRITICAL - Fix current database issues and relationships
+- [ ] **14.1 Folio Uniqueness Constraint**
+  - Add unique constraint on lab_reports.folio
+  - Prevent duplicate exam processing
+  - Handle folio extraction errors gracefully
+  - Update existing duplicate records
+  - _Requirements: 2.3_
+
+- [ ] **14.2 Health Markers Table Population**
+  - Define what goes in health_markers table (currently empty)
+  - Store individual test results: marker_name, result_value, unit, reference_range
+  - Link to lab_reports via folio foreign key
+  - Enable querying by specific health markers
+  - _Requirements: 6.5_
+
+- [ ] **14.3 Remove Redundant Tables**
+  - Evaluate if 'users' table is needed (currently empty)
+  - Clean up prioritized_patients duplicates
+  - Ensure proper foreign key relationships
+  - Optimize database schema for performance
+  - _Requirements: 6.6_
+
+- [ ] **14.4 Data Integrity Enforcement**
+  - Add proper foreign key constraints
+  - Implement cascade deletes where appropriate
+  - Add check constraints for valid priority levels
+  - Ensure referential integrity across all tables
+  - _Requirements: 6.7_
+
+### Task 15: End-to-End MVP Validation (Critical MVP Feature)
+**Priority:** CRITICAL - Validate complete system works as intended
+- [ ] **15.1 Complete PDF Processing Test**
+  - Upload PDF → Extract all data → Store in database → Calculate priority
+  - Verify no data loss in processing pipeline
+  - Test with multiple PDF samples
+  - Validate duplicate prevention works
+  - _Requirements: 13.1, 13.2_
+
+- [ ] **15.2 Priority Scoring Validation**
+  - Test with real patient case (Isabel Bolados Vega)
+  - Verify HIGH priority for severe diabetes + hypothyroidism
+  - Test edge cases and normal results
+  - Validate Spanish clinical reasoning
+  - _Requirements: 5.4, 4.5_
+
+- [ ] **15.3 Dashboard Integration Test**
+  - Verify dashboard shows real processed patients
+  - Test search and filtering with real data
+  - Validate priority sorting works correctly
+  - Test contact status workflow
+  - _Requirements: 10.1, 10.2_
+
+## Phase 6: Healthcare Features (Nice to Have)
+
+### Task 16: PDF Viewing (Requirement 12)
 - [x] Create "View Original PDF" functionality
 - [x] Implement PDF opening in new browser tab
 - [x] Add PDF access logging to audit trail
 
-### Task 12: Compliance & Security (Requirements 8, 9, 11)
+### Task 17: Compliance & Security (Requirements 8, 9, 11)
 - [ ] Implement comprehensive audit logging
 - [ ] Add role-based access control (worker vs admin)
 - [ ] Create data retention policy configuration
 - [ ] Build admin interface for system settings
 
-## Phase 6: Spanish Language & Chilean Specifics
+## Phase 7: Spanish Language & Chilean Specifics (Nice to Have)
 
-### Task 13: Localization
+### Task 18: Localization
 - [ ] Create Spanish translations for all UI elements
 - [ ] Implement Chilean date formatting
 - [ ] Add Spanish error messages for healthcare workers
 - [ ] Build RUT input validation components
 
-### Task 14: Chilean Medical Patterns
+### Task 19: Chilean Medical Patterns
 - [x] Create Chilean RUT validation utilities with proper algorithm
 - [x] Implement RUT formatting and extraction functions
 - [x] Add RUT anonymization for secure logging
@@ -139,15 +287,15 @@
 - [ ] Add Chilean lab format recognition
 - [ ] Build Spanish medical terminology validation
 
-## Phase 7: Error Handling & Polish (Requirement 14)
+## Phase 8: Error Handling & Polish (Nice to Have)
 
-### Task 15: Error Management
+### Task 20: Error Management
 - [ ] Create user-friendly error messages in Spanish
 - [ ] Implement PDF parsing failure handling
 - [ ] Add database error recovery mechanisms
 - [ ] Build authentication error handling
 
-### Task 16: Testing & Deployment
+### Task 21: Testing & Deployment
 - [ ] Create unit tests for PDF parsing functions
 - [ ] Add integration tests for authentication flow
 - [ ] Build E2E tests for critical patient workflows
