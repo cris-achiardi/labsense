@@ -1,6 +1,7 @@
 // Severity classification system for Task 7: Abnormal Value Detection
 
-import { HealthMarker, NormalRange, CRITICAL_VALUE_THRESHOLDS } from '@/types/database'
+import { HealthMarker, NormalRange } from '@/types/database'
+import { CriticalThresholdChecker } from './critical-thresholds'
 
 export type SeverityLevel = 'normal' | 'mild' | 'moderate' | 'severe'
 
@@ -44,7 +45,7 @@ export class SeverityClassifier {
     const deviationPercent = this.calculateDeviationPercent(deviation, min_value ?? null, max_value ?? null)
 
     // Check for critical values first (overrides other classifications)
-    const isCriticalValue = this.isCriticalValue(marker_type, value)
+    const isCriticalValue = this.isCriticalValue(marker_type, value, unit)
     if (isCriticalValue) {
       return {
         severity: 'severe',
@@ -120,17 +121,8 @@ export class SeverityClassifier {
   /**
    * Check if value meets critical value thresholds for Chilean healthcare
    */
-  private static isCriticalValue(markerType: string, value: number): boolean {
-    const threshold = CRITICAL_VALUE_THRESHOLDS[markerType as keyof typeof CRITICAL_VALUE_THRESHOLDS]
-    if (!threshold) return false
-
-    // Check high threshold
-    if (threshold.high && value >= threshold.high) return true
-    
-    // Check low threshold
-    if (threshold.low && value <= threshold.low) return true
-
-    return false
+  private static isCriticalValue(markerType: string, value: number, unit: string): boolean {
+    return CriticalThresholdChecker.isCriticalValue(markerType, value, unit)
   }
 
   /**
