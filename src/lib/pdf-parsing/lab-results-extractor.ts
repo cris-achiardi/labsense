@@ -15,6 +15,7 @@
 import { extractTextFromPDF } from './pdf-text-extractor'
 import { createHealthMarkerLookup, type HealthMarkerMapping } from './spanish-health-markers'
 import { extractLabResultsSimple } from './simple-lab-extractor'
+import { extractAllLabResults } from './comprehensive-lab-extractor'
 
 export interface LabResult {
   // Core lab result data
@@ -750,33 +751,99 @@ export async function extractCompleteLabReport(pdfBuffer: Buffer): Promise<Compl
     const dates = extractDates(firstPageText)
     const healthcareContext = extractHealthcareContext(firstPageText)
     
-    // Extract all lab results
-    let labResults = extractLabResults(fullText)
+    // Extract all lab results using comprehensive multi-pass strategy
+    console.log('🔍 Starting comprehensive multi-pass extraction...')
     
-    // If no results found, try the simple extractor as fallback
-    if (labResults.length === 0) {
-      console.log('🔄 No results from complex extractor, trying simple patterns...')
-      const simpleResults = extractLabResultsSimple(fullText)
-      
-      // Convert simple results to LabResult format
-      labResults = simpleResults.map(simple => ({
-        examen: simple.examen,
-        resultado: simple.resultado,
-        unidad: simple.unidad,
-        valorReferencia: simple.valorReferencia,
-        metodo: simple.metodo,
-        tipoMuestra: simple.tipoMuestra,
-        isAbnormal: simple.isAbnormal,
-        abnormalIndicator: simple.abnormalIndicator,
-        systemCode: simple.systemCode,
-        category: simple.category,
-        priority: simple.priority,
-        confidence: simple.confidence,
-        position: simple.position,
-        context: simple.context
+    // Try comprehensive extractor first (best coverage)
+    const comprehensiveResults = extractAllLabResults(fullText)
+    let labResults: LabResult[] = []
+    
+    if (comprehensiveResults.length > 0) {
+      // Convert comprehensive results to LabResult format
+      labResults = comprehensiveResults.map((comp: any) => ({
+        examen: comp.examen,
+        resultado: comp.resultado ?? '',
+        unidad: comp.unidad ?? '',
+        valorReferencia: comp.valorReferencia ?? '',
+        metodo: comp.metodo ?? '',
+        tipoMuestra: comp.tipoMuestra,
+        isAbnormal: comp.isAbnormal,
+        abnormalIndicator: comp.abnormalIndicator,
+        systemCode: comp.systemCode,
+        category: comp.category,
+        priority: comp.priority,
+        confidence: comp.confidence,
+        position: comp.position,
+        context: comp.context
       }))
       
-      console.log(`✅ Simple extractor found ${labResults.length} results`)
+      console.log(`✅ Comprehensive extractor found ${labResults.length} results`)
+      
+      // If still not reaching 68 results, try fallback extraction
+      if (labResults.length < 60) {
+        console.log('🔄 Adding fallback extraction for remaining results...')
+        
+        const fallbackResults = extractLabResults(fullText)
+        const simpleResults = extractLabResultsSimple(fullText)
+        
+        // Merge unique results from fallbacks
+        const existingExams = new Set(labResults.map(r => r.examen.toLowerCase().trim()))
+        
+        const allFallbackResults = [...fallbackResults, ...simpleResults.map(simple => ({
+          examen: simple.examen,
+          resultado: simple.resultado,
+          unidad: simple.unidad,
+          valorReferencia: simple.valorReferencia,
+          metodo: simple.metodo,
+          tipoMuestra: simple.tipoMuestra,
+          isAbnormal: simple.isAbnormal,
+          abnormalIndicator: simple.abnormalIndicator,
+          systemCode: simple.systemCode,
+          category: simple.category,
+          priority: simple.priority,
+          confidence: simple.confidence,
+          position: simple.position,
+          context: simple.context
+        }))]
+        
+        allFallbackResults.forEach(result => {
+          const examKey = result.examen.toLowerCase().trim()
+          if (!existingExams.has(examKey)) {
+            labResults.push(result)
+            existingExams.add(examKey)
+          }
+        })
+        
+        console.log(`✅ Total after fallbacks: ${labResults.length} results`)
+      }
+    } else {
+      // Fallback to original extraction methods
+      console.log('🔄 Comprehensive extractor failed, using fallback methods...')
+      labResults = extractLabResults(fullText)
+      
+      if (labResults.length === 0) {
+        console.log('🔄 Complex extractor failed, trying simple patterns...')
+        const simpleResults = extractLabResultsSimple(fullText)
+        
+        labResults = simpleResults.map(simple => ({
+          examen: simple.examen,
+          resultado: simple.resultado,
+          unidad: simple.unidad,
+          valorReferencia: simple.valorReferencia,
+          metodo: simple.metodo,
+          tipoMuestra: simple.tipoMuestra,
+          isAbnormal: simple.isAbnormal,
+          abnormalIndicator: simple.abnormalIndicator,
+          systemCode: simple.systemCode,
+          category: simple.category,
+          priority: simple.priority,
+          confidence: simple.confidence,
+          position: simple.position,
+          context: simple.context
+        }))
+        
+        console.log(`✅ Simple extractor found ${labResults.length} results`)
+      }
     }
     
     // Calculate metadata
