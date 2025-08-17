@@ -1277,12 +1277,10 @@ const CANONICAL_LAB_ALIASES: Record<string, string> = {
   'HEMOGLOBINA GLICOSILADA': 'HEMOGLOBINA GLICADA A1C',
   'A1C': 'HEMOGLOBINA GLICADA A1C',
   
-  // Thyroid variations - fix duplicate names
+  // Thyroid variations - clean aliases only
   'TSH': 'H. TIROESTIMULANTE (TSH)',
   'TIROTROPINA': 'H. TIROESTIMULANTE (TSH)',
-  'H. TIROESTIMULANTE (H. TIROESTIMULANTE (TSH))': 'H. TIROESTIMULANTE (TSH)',
   'T4 LIBRE': 'H. TIROXINA LIBRE (T4 LIBRE)',
-  'H. TIROXINA LIBRE (H. TIROXINA LIBRE (T4 LIBRE))': 'H. TIROXINA LIBRE (T4 LIBRE)',
   'FT4': 'H. TIROXINA LIBRE (T4 LIBRE)',
   
   // Creatinine variations
@@ -1323,14 +1321,14 @@ function normalizeLabResult(result: ComprehensiveLabResult): ComprehensiveLabRes
   if (CANONICAL_LAB_ALIASES[upperExamen]) {
     result.examen = CANONICAL_LAB_ALIASES[upperExamen]
   } else {
-    // Normalize exam names - handle common variations
+    // Normalize exam names - handle common variations (avoid duplicates)
     result.examen = result.examen
       .replace(/\s+/g, ' ')
       .replace(/GLICEMIA\s+EN\s+AYUNAS?/gi, 'GLICEMIA EN AYUNO (BASAL)')
       .replace(/GLUCOSA\s+EN\s+AYUNO/gi, 'GLICEMIA EN AYUNO (BASAL)')
-      .replace(/HBA1C/gi, 'HEMOGLOBINA GLICADA A1C')
-      .replace(/TSH/gi, 'H. TIROESTIMULANTE (TSH)')
-      .replace(/T4\s+LIBRE/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
+      .replace(/^HBA1C$/gi, 'HEMOGLOBINA GLICADA A1C')
+      .replace(/^TSH$/gi, 'H. TIROESTIMULANTE (TSH)')
+      .replace(/^T4\s+LIBRE$/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
       .trim()
   }
   
