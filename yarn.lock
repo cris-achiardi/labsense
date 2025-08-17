@@ -218,27 +218,6 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@napi-rs/canvas-darwin-arm64@0.1.77":
-  version "0.1.77"
-  resolved "https://registry.npmjs.org/@napi-rs/canvas-darwin-arm64/-/canvas-darwin-arm64-0.1.77.tgz"
-  integrity sha512-VFaCaCgAV0+hPwXajDIiHaaGx4fVCuUVYp/CxCGXmTGz699ngIEBx3Sa2oDp0uk3X+6RCRLueb7vD44BKBiPIg==
-
-"@napi-rs/canvas@^0.1.74":
-  version "0.1.77"
-  resolved "https://registry.npmjs.org/@napi-rs/canvas/-/canvas-0.1.77.tgz"
-  integrity sha512-N9w2DkEKE1AXGp3q55GBOP6BEoFrqChDiFqJtKViTpQCWNOSVuMz7LkoGehbnpxtidppbsC36P0kCZNqJKs29w==
-  optionalDependencies:
-    "@napi-rs/canvas-android-arm64" "0.1.77"
-    "@napi-rs/canvas-darwin-arm64" "0.1.77"
-    "@napi-rs/canvas-darwin-x64" "0.1.77"
-    "@napi-rs/canvas-linux-arm-gnueabihf" "0.1.77"
-    "@napi-rs/canvas-linux-arm64-gnu" "0.1.77"
-    "@napi-rs/canvas-linux-arm64-musl" "0.1.77"
-    "@napi-rs/canvas-linux-riscv64-gnu" "0.1.77"
-    "@napi-rs/canvas-linux-x64-gnu" "0.1.77"
-    "@napi-rs/canvas-linux-x64-musl" "0.1.77"
-    "@napi-rs/canvas-win32-x64-msvc" "0.1.77"
-
 "@next/env@15.4.6":
   version "15.4.6"
   resolved "https://registry.npmjs.org/@next/env/-/env-15.4.6.tgz"
@@ -248,6 +227,41 @@
   version "15.4.6"
   resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-15.4.6.tgz"
   integrity sha512-667R0RTP4DwxzmrqTs4Lr5dcEda9OxuZsVFsjVtxVMVhzSpo6nLclXejJVfQo2/g7/Z9qF3ETDmN3h65mTjpTQ==
+
+"@next/swc-darwin-x64@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-darwin-x64/-/swc-darwin-x64-15.4.6.tgz"
+  integrity sha512-KMSFoistFkaiQYVQQnaU9MPWtp/3m0kn2Xed1Ces5ll+ag1+rlac20sxG+MqhH2qYWX1O2GFOATQXEyxKiIscg==
+
+"@next/swc-linux-arm64-gnu@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-linux-arm64-gnu/-/swc-linux-arm64-gnu-15.4.6.tgz"
+  integrity sha512-PnOx1YdO0W7m/HWFeYd2A6JtBO8O8Eb9h6nfJia2Dw1sRHoHpNf6lN1U4GKFRzRDBi9Nq2GrHk9PF3Vmwf7XVw==
+
+"@next/swc-linux-arm64-musl@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-linux-arm64-musl/-/swc-linux-arm64-musl-15.4.6.tgz"
+  integrity sha512-XBbuQddtY1p5FGPc2naMO0kqs4YYtLYK/8aPausI5lyOjr4J77KTG9mtlU4P3NwkLI1+OjsPzKVvSJdMs3cFaw==
+
+"@next/swc-linux-x64-gnu@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-linux-x64-gnu/-/swc-linux-x64-gnu-15.4.6.tgz"
+  integrity sha512-+WTeK7Qdw82ez3U9JgD+igBAP75gqZ1vbK6R8PlEEuY0OIe5FuYXA4aTjL811kWPf7hNeslD4hHK2WoM9W0IgA==
+
+"@next/swc-linux-x64-musl@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-linux-x64-musl/-/swc-linux-x64-musl-15.4.6.tgz"
+  integrity sha512-XP824mCbgQsK20jlXKrUpZoh/iO3vUWhMpxCz8oYeagoiZ4V0TQiKy0ASji1KK6IAe3DYGfj5RfKP6+L2020OQ==
+
+"@next/swc-win32-arm64-msvc@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-win32-arm64-msvc/-/swc-win32-arm64-msvc-15.4.6.tgz"
+  integrity sha512-FxrsenhUz0LbgRkNWx6FRRJIPe/MI1JRA4W4EPd5leXO00AZ6YU8v5vfx4MDXTvN77lM/EqsE3+6d2CIeF5NYg==
+
+"@next/swc-win32-x64-msvc@15.4.6":
+  version "15.4.6"
+  resolved "https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-15.4.6.tgz"
+  integrity sha512-T4ufqnZ4u88ZheczkBTtOF+eKaM14V8kbjud/XrAakoM5DKQWjW09vD6B9fsdsWS2T7D5EY31hRHdta7QKWOng==
 
 "@panva/hkdf@^1.0.2":
   version "1.2.1"
@@ -1740,13 +1754,6 @@ pdf-parse@^1.1.1:
   dependencies:
     debug "^3.1.0"
     node-ensure "^0.0.0"
-
-pdfjs-dist@^5.4.54:
-  version "5.4.54"
-  resolved "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-5.4.54.tgz"
-  integrity sha512-TBAiTfQw89gU/Z4LW98Vahzd2/LoCFprVGvGbTgFt+QCB1F+woyOPmNNVgLa6djX9Z9GGTnj7qE1UzpOVJiINw==
-  optionalDependencies:
-    "@napi-rs/canvas" "^0.1.74"
 
 picocolors@^1.0.0:
   version "1.1.1"

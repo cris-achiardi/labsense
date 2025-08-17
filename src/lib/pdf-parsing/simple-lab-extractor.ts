@@ -29,7 +29,6 @@ export function extractLabResultsSimple(text: string): SimpleLabResult[] {
   const results: SimpleLabResult[] = []
   const healthMarkerLookup = createHealthMarkerLookup()
   
-  console.log('🔍 Starting simple lab extraction...')
   
   // Define comprehensive patterns for ALL lab results we want to extract
   const knownPatterns = [
@@ -251,7 +250,6 @@ export function extractLabResultsSimple(text: string): SimpleLabResult[] {
           continue
         }
         
-        console.log(`✅ Found (generic): ${examenFound}: ${resultado} ${unidadFound}`)
         
         // Try to map generic exam to known health marker
         let systemCode: string | null = null
@@ -265,7 +263,6 @@ export function extractLabResultsSimple(text: string): SimpleLabResult[] {
             systemCode = marker.systemCode
             category = marker.category
             priority = marker.priority
-            console.log(`🔗 Mapped ${examenFound} to ${marker.systemCode}`)
             break
           }
         }
@@ -299,7 +296,6 @@ export function extractLabResultsSimple(text: string): SimpleLabResult[] {
         results.push(labResult)
       } else {
         // Handle specific patterns
-        console.log(`✅ Found ${patternDef.examen}: ${match[1]} ${patternDef.unidad}`)
         
         const resultado = parseFloat(match[1].replace(',', '.'))
         let valorReferencia = match[2]
@@ -342,10 +338,8 @@ export function extractLabResultsSimple(text: string): SimpleLabResult[] {
         results.push(labResult)
       }
     } else if (patternDef.examen !== 'GENERIC_PATTERN') {
-      console.log(`❌ Pattern not found for ${patternDef.examen}`)
     }
   }
   
-  console.log(`🎯 Simple extraction found ${results.length} results`)
   return results
 }

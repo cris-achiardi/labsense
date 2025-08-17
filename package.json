@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "test:pdf": "npx tsx test-pdf-extraction.ts",
-    "test:pdf-old": "node -r ts-node/register src/lib/pdf-parsing/test-pdf-parser.ts"
+    "test:pdf": "npx tsx test-pdf-extraction.ts"
   },
   "description": "Intelligent lab result prioritization system for Chilean healthcare",
   "keywords": [
@@ -33,7 +32,6 @@
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.4",
     "pdf-parse": "^1.1.1",
-    "pdfjs-dist": "^5.4.54",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "typescript": "^5.9.2"

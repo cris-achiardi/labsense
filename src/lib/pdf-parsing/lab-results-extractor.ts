@@ -204,19 +204,15 @@ function extractLabResults(text: string): LabResult[] {
   const lines = text.split('\n')
   
   // Debug: Log some lines to understand the format
-  console.log('🔍 Analyzing PDF text structure:')
   
   // Look for the specific patterns in the PDF
   const testSections = text.split('___________________________________________________________________________________________________________________________________')
-  console.log(`📊 Found ${testSections.length} test sections`)
   
   // Process each section that contains lab results
   for (let sectionIndex = 0; sectionIndex < testSections.length; sectionIndex++) {
     const section = testSections[sectionIndex]
     if (section.includes('ExamenResultadoUnidadValor de ReferenciaMétodo') || 
         section.includes('Examen') && section.includes('Resultado') && section.includes('Unidad')) {
-      console.log(`🧪 Processing lab section ${sectionIndex}:`)
-      console.log(section.substring(0, 500) + '...')
       
       // Extract lab results from this section
       const sectionResults = extractLabResultsFromSection(section, healthMarkerLookup)
@@ -252,7 +248,6 @@ function extractLabResults(text: string): LabResult[] {
     for (const [searchTerm, marker] of markerEntries) {
       if (upperLine.includes(searchTerm)) {
         foundMarker = marker
-        console.log(`✅ Found marker: ${searchTerm} in line: "${line}"`)
         break
       }
     }
@@ -261,22 +256,18 @@ function extractLabResults(text: string): LabResult[] {
       // Check if we already extracted this marker
       const alreadyExtracted = results.some(r => r.systemCode === foundMarker!.systemCode)
       if (alreadyExtracted) {
-        console.log(`⚠️ Already extracted ${foundMarker.systemCode}, skipping`)
         continue
       }
       
       // Try to extract the complete lab result from this line and surrounding context
       const labResult = parseLabResultLineImproved(line, foundMarker, i, lines)
       if (labResult) {
-        console.log(`✅ Extracted lab result: ${labResult.examen} = ${labResult.resultado}`)
         results.push(labResult)
       } else {
-        console.log(`❌ Failed to parse lab result from: "${line}"`)
       }
     }
   }
   
-  console.log(`🎯 Total lab results extracted: ${results.length}`)
   return results
 }
 
@@ -311,7 +302,6 @@ function extractLabResultsFromSection(section: string, healthMarkerLookup: Map<s
     // Try to parse this line as a lab result
     const labResult = parseLabResultFromSectionLine(line, healthMarkerLookup, i)
     if (labResult) {
-      console.log(`✅ Extracted from section: ${labResult.examen} = ${labResult.resultado}`)
       sectionResults.push(labResult)
     }
   }
@@ -343,13 +333,11 @@ function parseLabResultFromSectionLine(
   if (!foundMarker) return null
   
   // Try multiple patterns for this specific Chilean PDF format
-  console.log(`🔍 Trying to parse: "${line}"`)
   
   // Pattern 1: GLICEMIA EN AYUNO (BASAL)269(mg/dL)[*] 74-106 Hexoquinasa
   const pattern1 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)(.+?)(?:\s+([A-Za-z].+))?$/)
   
   if (pattern1) {
-    console.log(`✅ Pattern 1 matched:`, pattern1)
     const [, examen, resultado, unidad, valorReferencia, metodo = ''] = pattern1
     
     return createLabResultFromMatch(
@@ -368,7 +356,6 @@ function parseLabResultFromSectionLine(
   const pattern2 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)\s*(.+)$/)
   
   if (pattern2) {
-    console.log(`✅ Pattern 2 matched:`, pattern2)
     const [, examen, resultado, unidad, rest] = pattern2
     
     // Try to separate reference from method
@@ -403,7 +390,6 @@ function parseLabResultFromSectionLine(
   const pattern3 = line.match(/^(.+?)(\d+(?:,\d+)?(?:\.\d+)?)(.+)$/)
   
   if (pattern3) {
-    console.log(`✅ Pattern 3 matched:`, pattern3)
     const [, examen, resultado, rest] = pattern3
     
     // Extract unit from parentheses
