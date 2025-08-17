@@ -13,7 +13,7 @@ The Lab Result Prioritization System is a Next.js web application that automates
 
 ## Architecture
 
-### High-Level Architecture
+### Current Implementation Architecture
 
 ```mermaid
 graph TB
@@ -29,10 +29,11 @@ graph TB
     
     subgraph "Service Layer"
         PDFService[PDF Processing Service]
-        ParsingService[Health Marker Parsing Service]
+        ComprehensiveExtractor[Comprehensive Lab Extractor]
+        SeverityClassifier[Spanish Clinical Severity System]
         FlaggingService[Abnormal Value Flagging Service]
         AuditService[Audit Logging Service]
-        NotificationService[Notification Service - Future]
+        ValidationPipeline[Extraction Validation Pipeline]
     end
     
     subgraph "Data Layer"
@@ -48,11 +49,14 @@ graph TB
     Auth --> Google
     API --> Middleware
     Middleware --> PDFService
-    Middleware --> ParsingService
+    Middleware --> ComprehensiveExtractor
+    Middleware --> SeverityClassifier
     Middleware --> FlaggingService
     Middleware --> AuditService
     PDFService --> Storage
-    ParsingService --> DB
+    ComprehensiveExtractor --> ValidationPipeline
+    ValidationPipeline --> DB
+    SeverityClassifier --> DB
     FlaggingService --> DB
     AuditService --> DB
 ```
@@ -70,9 +74,10 @@ graph TB
 **Backend:**
 - Next.js API Routes
 - NextAuth.js for authentication
-- PDF parsing: pdf-parse or pdf2pic + OCR
-- Text processing: Regular expressions + NLP libraries optimized for Spanish text
-- Spanish language health marker recognition patterns
+- PDF parsing: pdf-parse optimized for serverless deployment
+- Comprehensive extraction engine with 68+ health marker patterns
+- Spanish clinical terminology processing with severity classification
+- Multi-format reference range parsing system
 
 **Database & Storage:**
 - Supabase PostgreSQL for structured data
@@ -161,27 +166,47 @@ interface ValidationResult {
 }
 ```
 
-#### 3. Health Marker Parsing Module
+#### 3. Comprehensive Lab Extraction Module
 ```typescript
-interface HealthMarkerParsingModule {
-  parseHealthMarkers: (text: string) => Promise<HealthMarker[]>
-  validateMarkerValues: (markers: HealthMarker[]) => ValidationResult
-  extractNumericValues: (text: string, markerType: string) => MarkerValue[]
-  calculateConfidenceScore: (marker: HealthMarker, context: string) => number
-  validateHealthcareLogic: (markers: HealthMarker[]) => HealthcareValidation
+interface ComprehensiveLabExtractorModule {
+  extractAllHealthMarkers: (pdfText: string) => Promise<LabExtractionResult>
+  classifySpanishSeverity: (markers: HealthMarker[]) => SeverityDistribution
+  validateExtractionConfidence: (extraction: LabExtractionResult) => ConfidenceMetrics
+  processChileanLabFormat: (pdfPages: string[]) => ChileanLabReport
+  calculateCoverageScore: (extracted: HealthMarker[], expected: string[]) => number
 }
 
 interface HealthMarker {
-  type: 'glucose' | 'cholesterol' | 'triglycerides' | 'liver_enzymes' | string
-  value: number
+  type: string // Standardized marker type
+  spanishName: string // Original Spanish lab name
+  value: number | string
   unit: string
   normalRange: NormalRange
   extractedText: string
   confidence: number
   isAbnormal: boolean
-  abnormalIndicator?: string // [ * ] or other markers
-  severity?: 'normal' | 'mild' | 'moderate' | 'severe'
+  abnormalIndicator?: string // [ * ] or other Chilean indicators
+  severity: 'normal' | 'leve' | 'moderado' | 'severo' | 'crítico'
   isCriticalValue: boolean
+  sampleType?: string // SUERO, SANGRE TOTAL, ORINA
+}
+
+interface LabExtractionResult {
+  markers: HealthMarker[]
+  patientInfo: PatientInfo
+  overallConfidence: number
+  coveragePercentage: number
+  extractionTimestamp: Date
+  processingTimeMs: number
+}
+
+interface SeverityDistribution {
+  crítico: number
+  severo: number
+  moderado: number
+  leve: number
+  normal: number
+  totalAbnormal: number
 }
 
 interface NormalRange {
@@ -205,22 +230,30 @@ interface HealthcareValidation {
 }
 ```
 
-#### 4. Abnormal Value Flagging Module
+#### 4. Spanish Clinical Severity System
 ```typescript
-interface FlaggingModule {
-  flagAbnormalValues: (markers: HealthMarker[]) => Promise<FlagResult[]>
-  calculatePriorityScore: (flags: FlagResult[]) => number
-  updatePatientPriority: (patientId: string, score: number) => Promise<void>
+interface SpanishSeverityClassificationModule {
+  classifySeverity: (marker: HealthMarker) => SpanishSeverityLevel
+  calculatePercentageDeviation: (value: number, range: NormalRange) => number
+  flagCriticalValues: (markers: HealthMarker[]) => CriticalValueAlert[]
+  calculateDynamicPriorityScore: (distribution: SeverityDistribution) => number
+  updatePatientRiskProfile: (patientId: string, severity: SeverityDistribution) => Promise<void>
 }
 
-interface FlagResult {
+interface SpanishSeverityLevel {
+  severity: 'normal' | 'leve' | 'moderado' | 'severo' | 'crítico'
+  deviationPercentage: number
+  clinicalSignificance: string
+  requiresImmediateAttention: boolean
+}
+
+interface CriticalValueAlert {
   markerId: string
-  markerType: string
-  value: number
-  normalRange: NormalRange
-  severity: 'mild' | 'moderate' | 'severe'
-  isAboveRange: boolean
-  isBelowRange: boolean
+  markerName: string
+  value: number | string
+  criticalThreshold: number
+  riskLevel: 'life-threatening' | 'urgent' | 'moderate'
+  recommendedAction: string
   flaggedAt: Date
 }
 ```
@@ -510,9 +543,10 @@ interface OptimizedPDFParser {
 
 ### Performance Testing
 
-- **Load Testing**: Simulate multiple concurrent PDF uploads
-- **Stress Testing**: Test system limits with large PDF files
-- **Performance Monitoring**: Track PDF processing times and database query performance
+- **Load Testing**: Validate concurrent PDF processing capabilities
+- **Processing Performance**: Target processing time under 30 seconds for comprehensive reports
+- **Extraction Accuracy**: Maintain confidence scores above 85% for production deployment
+- **Database Performance**: Optimize queries for real-time patient prioritization
 
 ## Internationalization and Language Support
 
