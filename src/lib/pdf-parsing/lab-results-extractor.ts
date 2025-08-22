@@ -110,6 +110,44 @@ function extractFolio(text: string): string | null {
 /**
  * Extracts dates from PDF text
  */
+/**
+ * Converts Chilean date format DD/MM/YYYY to ISO format YYYY-MM-DD
+ */
+function convertChileanDateToISO(chileanDate: string | null): string | null {
+  if (!chileanDate) return null
+  
+  try {
+    // Match DD/MM/YYYY format
+    const match = chileanDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (!match) return null
+    
+    const [, day, month, year] = match
+    
+    // Pad day and month with zeros if needed
+    const paddedDay = day.padStart(2, '0')
+    const paddedMonth = month.padStart(2, '0')
+    
+    // Validate date ranges
+    const dayNum = parseInt(day, 10)
+    const monthNum = parseInt(month, 10)
+    const yearNum = parseInt(year, 10)
+    
+    if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12 || yearNum < 1900 || yearNum > 2100) {
+      console.warn(`Invalid date components: ${chileanDate}`)
+      return null
+    }
+    
+    // Return ISO format
+    const isoDate = `${year}-${paddedMonth}-${paddedDay}`
+    console.log(`Converted Chilean date ${chileanDate} to ISO: ${isoDate}`)
+    return isoDate
+    
+  } catch (error) {
+    console.error(`Error converting date ${chileanDate}:`, error)
+    return null
+  }
+}
+
 function extractDates(text: string): {
   fechaIngreso: string | null
   tomaMuestra: string | null
@@ -143,7 +181,10 @@ function extractDates(text: string): {
     for (const pattern of patterns) {
       const match = text.match(pattern)
       if (match && match[1]) {
-        result[dateType as keyof typeof result] = match[1].trim()
+        // Convert Chilean date to ISO format for database compatibility
+        const chileanDate = match[1].trim()
+        const isoDate = convertChileanDateToISO(chileanDate)
+        result[dateType as keyof typeof result] = isoDate
         break
       }
     }

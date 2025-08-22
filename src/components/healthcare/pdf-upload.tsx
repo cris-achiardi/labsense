@@ -146,7 +146,7 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted, onSuccess
         formData.append('patientData', JSON.stringify(patientData))
       }
 
-      const response = await fetch('/api/pdf/process-and-store', {
+      const response = await fetch('/api/pdf/process-complete-lab', {
         method: 'POST',
         body: formData
       })
@@ -171,8 +171,9 @@ export function PDFUpload({ onFileSelect, onError, onPatientExtracted, onSuccess
         // Call success callback if provided
         onSuccess?.(data.data)
         
-        // Show detailed success message
-        alert(`¡PDF procesado exitosamente!\n\nPaciente: ${data.data.patient.name}\nRUT: ${data.data.patient.rut}\nConfianza: ${data.data.patient.confidence}%`)
+        // Show detailed success message with lab processing results
+        const summary = data.data.summary || {}
+        alert(`¡Examen de laboratorio procesado exitosamente!\n\nPaciente: ${data.data.patient.name}\nRUT: ${data.data.patient.rut}\nFolio: ${data.data.folio || 'N/A'}\n\nResultados procesados: ${summary.totalResults || 0}\nValores anormales: ${summary.abnormalResults || 0}\nValores críticos: ${summary.criticalResults || 0}\nConfianza: ${summary.confidence || 0}%`)
       }
     } catch (error) {
       console.error('Error processing and storing PDF:', error)
