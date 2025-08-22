@@ -5,6 +5,73 @@ All notable changes to the LabSense Chilean Lab Result Prioritization System wil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-08-22
+
+### 🏗️ ARCHITECTURE IMPROVEMENT - Modular Lab Extractors & Enhanced Patient Management
+
+This release introduces a modular architecture for lab extractors and complete patient management system, significantly improving code organization and adding individual patient capabilities.
+
+### ✅ Added - Modular Extractor Architecture
+
+#### 🔧 Specialized Lab Extractors
+- **blood-analysis.ts**: Complete blood count and blood chemistry extraction
+- **urine-analysis.ts**: Urinalysis and urine sediment examination
+- **serology-tests.ts**: Serology and immunology test processing
+- **global-fallback.ts**: Catch-all patterns for unknown markers
+- **extractors/index.ts**: Central export hub for all specialized extractors
+
+#### 🏥 Complete Patient Management System
+- **Individual Patient Pages**: `/app/patients/[id]/page.tsx` for detailed patient views
+- **Patient Dashboard**: `/app/patients/page.tsx` with comprehensive patient listing
+- **Patient API Endpoints**: 
+  - `/api/patients/[id]/route.ts` - RESTful patient data access
+  - `/api/patients/[id]/lab-results/route.ts` - Patient-specific lab results
+
+#### 📊 Enhanced Data Architecture
+- **Migration 008**: Fixed abnormal indicator column structure for better data integrity
+- **Qualitative Results**: Enhanced support for qualitative lab values and observations
+- **Improved Constraints**: Better database constraint handling and validation
+
+### 🔧 Technical Improvements
+
+#### Code Organization
+- **Modular Design**: Split comprehensive extractor into specialized, maintainable modules
+- **Better Separation**: Clear responsibility boundaries between different test categories
+- **Improved Maintainability**: Each extractor handles specific test types for easier updates
+- **Cleaner Architecture**: Eliminated redundant code and improved extraction pipeline
+
+#### API Enhancement
+- **RESTful Design**: Proper REST endpoints for patient and lab result access
+- **Individual Patient Views**: Dedicated pages for detailed patient examination
+- **Better Data Flow**: Improved data handling between frontend and backend
+- **Enhanced Error Handling**: Better error management across all new endpoints
+
+#### Database Optimization
+- **Schema Fixes**: Resolved abnormal indicator column issues
+- **Qualitative Support**: Enhanced handling of non-numeric lab results
+- **Data Integrity**: Improved constraint validation and error handling
+- **Performance**: Optimized queries for patient-specific data access
+
+### 🏥 Healthcare Workflow Improvements
+
+#### Patient Management
+- **Individual Patient Focus**: Healthcare workers can now view detailed patient information
+- **Complete Lab History**: Access to all lab results for a specific patient
+- **Better Navigation**: Improved workflow for managing individual patients
+- **Enhanced UI**: Professional patient management interface
+
+#### Clinical Decision Support
+- **Detailed Patient Views**: Complete medical picture for each patient
+- **Lab Result Organization**: Better organization of lab results by patient
+- **Historical Tracking**: Track patient lab results over time
+- **Clinical Context**: Enhanced context for clinical decision making
+
+### 📈 Performance Metrics
+- **Modular Processing**: Improved processing efficiency through specialized extractors
+- **Better Caching**: Enhanced caching strategies for patient-specific data
+- **Optimized Queries**: Faster database queries for patient and lab result access
+- **Improved Load Times**: Better page load performance for patient views
+
 ## [1.5.0] - 2025-08-17
 
 ### ⭐ PRODUCTION BREAKTHROUGH - Complete Chilean Lab Extraction System
