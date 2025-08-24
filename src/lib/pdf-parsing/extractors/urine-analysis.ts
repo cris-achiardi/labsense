@@ -154,9 +154,12 @@ export function extractUrineSedimentAnalysis(
 ): ComprehensiveLabResult[] {
   const results: ComprehensiveLabResult[] = []
   
-  // Look for sediment section  
-  const sedimentMatch = text.match(/SEDIMENTO\s+URINARIO[\s\S]*?(?=HEMOGRAMA|BIOQUIMICA|$)/i)
-  if (!sedimentMatch) return results
+  // Look for sediment section with multiple possible names
+  const sedimentMatch = text.match(/SEDIMENTO\s+(?:DE\s+)?(?:ORINA|URINARIO)[\s\S]*?(?=Fecha de Recepción|Método Analítico|$)/i)
+  if (!sedimentMatch) {
+    console.log('❌ No sediment section found')
+    return results
+  }
   
   const sedimentText = sedimentMatch[0]
   console.log('🔬 Parsing URINE SEDIMENT section')
@@ -180,22 +183,16 @@ export function extractUrineSedimentAnalysis(
     if (paramName.includes('POR CAMPO')) {
       const baseParam = paramName.replace(' POR CAMPO', '')
       patterns = [
+        // Exact PDF format: HEMATIES POR CAMPO    0 - 2
+        new RegExp(`^(${baseParam})\\s+POR\\s+CAMPO\\s+(\\d+\\s*-\\s*\\d+|No se observan?)`, 'gmi'),
         // Standard: HEMATIES POR CAMPO 0-2
         new RegExp(`(${baseParam})\\s+POR\\s+CAMPO\\s+(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
         // Slash: HEMATIES/CAMPO 0-2  
         new RegExp(`(${baseParam})\\s*/\\s*CAMPO\\s+(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
         // Without POR: HEMATIES CAMPO 0-2
         new RegExp(`(${baseParam})\\s+CAMPO\\s+(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
-        // Colon separator: HEMATIES POR CAMPO: 0-2
-        new RegExp(`(${baseParam})\\s+POR\\s+CAMPO\\s*:\\s*(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
-        // Flexible spacing: HEMATIES  POR  CAMPO  0-2
-        new RegExp(`(${baseParam})\\s{1,3}POR\\s{1,3}CAMPO\\s{1,3}(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
-        // Tab separated: HEMATIES\tPOR\tCAMPO\t0-2
-        new RegExp(`(${baseParam})\\t+POR\\t+CAMPO\\t+(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
-        // Multi-line: HEMATIES POR CAMPO on one line, result on next
-        new RegExp(`(${baseParam})\\s+POR\\s+CAMPO\\s*\\n\\s*(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i'),
-        // Very loose: just the base parameter followed by numbers/ranges anywhere nearby
-        new RegExp(`(${baseParam})[\\s\\w]*?(\\d+\\s*-\\s*\\d+|No se observan?)`, 'i')
+        // Tab separated patterns from the actual PDF
+        new RegExp(`(${baseParam})\\s+POR\\s+CAMPO\\s+(.+?)\\s*$`, 'gmi'),
       ]
       
       // Add extra aggressive patterns for LEUCOCITOS
@@ -306,7 +303,7 @@ function createLabResult(params: {
     systemCode: healthMarker?.systemCode || null,
     category: tipoMuestra === 'ORINA' ? 'urine' : 'other',
     priority: isAbnormal ? 'medium' : 'low',
-    confidence: confidence / 100,
+    confidence,
     position,
     context,
     resultType

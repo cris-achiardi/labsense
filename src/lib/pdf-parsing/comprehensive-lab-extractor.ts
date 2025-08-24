@@ -1,23 +1,20 @@
 /**
  * Comprehensive Lab Results Extraction for Chilean Lab Reports
- * Handles ALL 68+ health markers including qualitative results
+ * Orchestrates extraction of 68+ health markers using modular architecture
  *
- * ✅ Current Implementation: Text-based extraction with sample type segmentation
+ * ✅ Modular Implementation: Clean separation of concerns
+ * - Uses specialized extractors from /extractors/ modules
+ * - Centralized data processing pipeline
+ * - Type-safe interfaces and utilities
+ * - Configuration-driven processing
+ *
+ * ✅ Text-based extraction with sample type segmentation
  * - Uses "Tipo de Muestra" blocks to prevent contamination
- * - Enhanced stopword filtering for metadata
- * - Normalization pipeline for data quality
+ * - Enhanced filtering for metadata noise
+ * - Multi-pass extraction strategies
  *
  * 🔮 Future Consideration: Coordinate-based PDF extraction
- * For even more robust extraction, consider switching to layout-aware parsing:
- *
- * Benefits:
- * - Spatial understanding prevents accidental text concatenation
- * - Can separate table regions from header/footer metadata
- * - Groups text by line positions and coordinates
- *
- * Implementation approach:
- * 1. Use pdfplumber (Python) or pdf.js + coordinates (Node/TS)
- * 2. Extract text with x/y coordinates preserved
+ * For even more robust extraction, consider switching to layout-aware parsing
  * 3. Group text by line positions
  * 4. Apply existing regex patterns to spatially-isolated text blocks
  *
@@ -49,13 +46,12 @@
  * - Could increase extraction rate from 51 to closer to 62 results
  */
 
-// import { debugExtractionResults } from './debug-utilities'; // Removed for now
+// Modular imports following separation of concerns
+// Import only non-conflicting utilities for now
 import {
+	cleanReferenceValue,
+	escapeRegexChars,
 	extractCompleteUrineAnalysis,
-	extractMissingHemogramParams,
-	extractMissingLipidParam,
-	extractMissingParametersGlobally,
-	extractSerologyTests,
 	extractUrineSedimentAnalysis,
 } from './extractors';
 import {
@@ -800,24 +796,11 @@ export interface ComprehensiveLabResult {
  */
 function extractLabNamesAndResults(
 	text: string,
-	healthMarkerLookup: Map<string, HealthMarkerMapping>,
-	sampleType?: string
+	healthMarkerLookup: Map<string, HealthMarkerMapping>
 ): ComprehensiveLabResult[] {
 	const results: ComprehensiveLabResult[] = [];
 
 	console.log('🎯 Starting EXACT LAB NAME + RESULT extraction...');
-
-	// Context-aware parameter mapping based on sample type
-	const contextualMapping: Record<string, string> = {};
-	if (sampleType === 'ORINA') {
-		// Urine-specific mappings
-		contextualMapping['LEUCOCITOS'] = 'LEUCOCITOS'; // Keep as urine leucocytes, not blood WBC
-		contextualMapping['GLUCOSA'] = 'GLUCOSA'; // Keep as urine glucose, not blood glucose
-	} else if (sampleType === 'SANGRE TOTAL' || sampleType === 'SUERO') {
-		// Blood-specific mappings
-		contextualMapping['LEUCOCITOS'] = 'RECUENTO GLOBULOS BLANCOS';
-		contextualMapping['GLUCOSA'] = 'GLICEMIA EN AYUNO (BASAL)';
-	}
 
 	// Get all exact lab names from our standardized database
 	const exactLabNames = Object.keys(CHILEAN_LAB_FORMATS);
@@ -826,90 +809,35 @@ function extractLabNamesAndResults(
 	// For each exact lab name, find it in the text and extract the result
 	for (const exactLabName of exactLabNames) {
 		const escapedLabName = exactLabName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		
-		// Apply context-aware mapping for this lab name
-		let finalLabName = exactLabName;
-		if (sampleType && contextualMapping[exactLabName]) {
-			finalLabName = contextualMapping[exactLabName];
-			console.log(`🔄 Context mapping: ${exactLabName} -> ${finalLabName} (${sampleType})`);
-		}
 
-		// Add contextual alias patterns for common variations
-		const aliasPatterns: string[] = [];
-		if (sampleType === 'ORINA' && exactLabName === 'LEUCOCITOS') {
-			aliasPatterns.push('LEUCOCITOS'); // Match LEUCOCITOS in urine context
-		} else if ((sampleType === 'SANGRE TOTAL' || sampleType === 'SUERO') && exactLabName === 'RECUENTO GLOBULOS BLANCOS') {
-			aliasPatterns.push('LEUCOCITOS'); // Match LEUCOCITOS in blood context
-		}
-		if (sampleType === 'ORINA' && exactLabName === 'GLUCOSA') {
-			aliasPatterns.push('GLUCOSA'); // Match GLUCOSA in urine context
-		} else if ((sampleType === 'SANGRE TOTAL' || sampleType === 'SUERO') && exactLabName === 'GLICEMIA EN AYUNO (BASAL)') {
-			aliasPatterns.push('GLUCOSA'); // Match GLUCOSA in blood context
-		}
-
-		// Enhanced patterns to find EXACT lab name followed by result with flexible formatting
+		// Patterns to find EXACT lab name followed by result
 		const exactPatterns = [
-			// Pattern 1: Standard with single space: GLICEMIA EN AYUNO (BASAL) 269
+			// Pattern 1: Exact lab name with space and number: GLICEMIA EN AYUNO (BASAL) 269
 			new RegExp(`\\b(${escapedLabName})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
 
-			// Pattern 2: Connected directly: GLICEMIA EN AYUNO (BASAL)269
+			// Pattern 2: Exact lab name connected to number: GLICEMIA EN AYUNO (BASAL)269
 			new RegExp(`\\b(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
 
-			// Pattern 3: Flexible spacing (2-5 spaces): GLICEMIA EN AYUNO (BASAL)    269
-			new RegExp(`\\b(${escapedLabName})\\s{2,5}(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-
-			// Pattern 4: Tab-separated: GLICEMIA EN AYUNO (BASAL)\t269
-			new RegExp(`\\b(${escapedLabName})\\t+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-
-			// Pattern 5: With colon separator: GLICEMIA EN AYUNO (BASAL): 269
-			new RegExp(`\\b(${escapedLabName})\\s*:\\s*(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-
-			// Pattern 6: With dash separator: GLICEMIA EN AYUNO (BASAL) - 269
-			new RegExp(`\\b(${escapedLabName})\\s*-\\s*(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-
-			// Pattern 7: Multi-line: Lab name on one line, result on next
-			new RegExp(`\\b(${escapedLabName})\\s*\\n\\s*(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-
-			// Pattern 8: With unit in parentheses: HEMOGLOBINA14,2(g/dL)
+			// Pattern 3: Exact lab name with unit in parentheses: HEMOGLOBINA14,2(g/dL)
 			new RegExp(
 				`\\b(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\([^)]+\\)`,
 				'g'
 			),
 
-			// Pattern 9: Qualitative results with flexible spacing
+			// Pattern 4: Qualitative results for exact lab names
 			new RegExp(
-				`\\b(${escapedLabName})\\s{1,5}(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`,
-				'g'
-			),
-
-			// Pattern 10: Qualitative results with separators
-			new RegExp(
-				`\\b(${escapedLabName})\\s*[:\\-]\\s*(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`,
+				`\\b(${escapedLabName})\\s+(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|Moderada cantidad)`,
 				'g'
 			),
 		];
 
-		// Add alias patterns for contextual variations
-		const allPatterns = [...exactPatterns];
-		for (const aliasName of aliasPatterns) {
-			const escapedAlias = aliasName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			// Add the same pattern variations but with the alias name
-			allPatterns.push(
-				new RegExp(`\\b(${escapedAlias})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-				new RegExp(`\\b(${escapedAlias})(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-				new RegExp(`\\b(${escapedAlias})\\s{2,5}(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-				new RegExp(`\\b(${escapedAlias})\\s*:\\s*(\\d+(?:,\\d+)?(?:\\.\\d+)?)`, 'g'),
-				new RegExp(`\\b(${escapedAlias})\\s{1,5}(No reactivo|Negativo|Positivo|Reactivo|Claro|Amarillo|Turbio|No se observan|Escasa cantidad|Abundante|\\+\\+)`, 'g')
-			);
-		}
-
 		// Try each pattern for this exact lab name
 		for (
 			let patternIndex = 0;
-			patternIndex < allPatterns.length;
+			patternIndex < exactPatterns.length;
 			patternIndex++
 		) {
-			const pattern = allPatterns[patternIndex];
+			const pattern = exactPatterns[patternIndex];
 			let match;
 
 			while ((match = pattern.exec(text)) !== null) {
@@ -918,12 +846,9 @@ function extractLabNamesAndResults(
 				// Skip if already extracted
 				if (isAlreadyExtracted(results, examen)) continue;
 
-				// Use canonical name if this was matched via an alias
-				const canonicalExamen = aliasPatterns.includes(examen.trim()) ? exactLabName : examen.trim();
-				
 				// Create lab result with exact database match
 				const labResult = createExactLabResult(
-					canonicalExamen,
+					examen.trim(),
 					resultado.trim(),
 					healthMarkerLookup,
 					patternIndex,
@@ -1163,11 +1088,34 @@ function parseLipidProfile(
 ): ComprehensiveLabResult[] {
 	const results: ComprehensiveLabResult[] = [];
 
-	// Look for lipid profile section
-	const lipidSectionMatch = text.match(
+	// Look for lipid profile section - try multiple patterns
+	let lipidSectionMatch = text.match(
 		/TRIGLICERIDOS[\s\S]*?(?=(?:HEMOGRAMA|ELECTROLITOS|FUNCION|$))/i
 	);
-	if (!lipidSectionMatch) return results;
+
+	// Try alternative starting points if main pattern fails
+	if (!lipidSectionMatch) {
+		lipidSectionMatch = text.match(
+			/COLESTEROL TOTAL[\s\S]*?(?=(?:HEMOGRAMA|ELECTROLITOS|FUNCION|$))/i
+		);
+	}
+	if (!lipidSectionMatch) {
+		lipidSectionMatch = text.match(
+			/COLESTEROL HDL[\s\S]*?(?=(?:HEMOGRAMA|ELECTROLITOS|FUNCION|$))/i
+		);
+	}
+	if (!lipidSectionMatch) {
+		// Last resort: just search the entire text for lipid parameters
+		console.log('🔄 Using entire text for lipid extraction');
+		const globalResults = extractLipidParametersGlobally(
+			text,
+			healthMarkerLookup
+		);
+		console.log(
+			`🔄 Global lipid extraction found ${globalResults.length} results`
+		);
+		return globalResults;
+	}
 
 	const lipidSection = lipidSectionMatch[0];
 	console.log('🔬 Parsing LIPID PROFILE section');
@@ -1233,13 +1181,12 @@ function parseLipidProfile(
 		}
 	}
 
-	console.log(`🩸 Hemogram extraction: ${results.length}/19 parameters found`);
 	return results;
 }
 
 /**
- * Dedicated parser for HEMOGRAM section - FIXED
- * Handles blood count with embedded differential - now extracts ALL 19 parameters
+ * Dedicated parser for HEMOGRAM section
+ * Handles blood count with embedded differential
  */
 function parseHemogramPanel(
 	text: string,
@@ -1247,16 +1194,39 @@ function parseHemogramPanel(
 ): ComprehensiveLabResult[] {
 	const results: ComprehensiveLabResult[] = [];
 
-	// Look for hemogram section more broadly
-	const hemogramSectionMatch = text.match(
-		/HEMOGRAMA[\s\S]*?(?=(?:ORINA|ELECTROLITOS|PERFIL|$))/i
+	// Look for hemogram section - try multiple patterns
+	let hemogramSectionMatch = text.match(
+		/RECUENTO GLOBULOS ROJOS[\s\S]*?(?=(?:ORINA|ELECTROLITOS|PERFIL|$))/i
 	);
-	if (!hemogramSectionMatch) return results;
+
+	// Try alternative starting points if main pattern fails
+	if (!hemogramSectionMatch) {
+		hemogramSectionMatch = text.match(
+			/HEMOGLOBINA[\s\S]*?(?=(?:ORINA|ELECTROLITOS|PERFIL|$))/i
+		);
+	}
+	if (!hemogramSectionMatch) {
+		hemogramSectionMatch = text.match(
+			/HEMATOCRITO[\s\S]*?(?=(?:ORINA|ELECTROLITOS|PERFIL|$))/i
+		);
+	}
+	if (!hemogramSectionMatch) {
+		// Last resort: just search the entire text for hemogram parameters
+		console.log('🔄 Using entire text for hemogram extraction');
+		const globalResults = extractHemogramParametersGlobally(
+			text,
+			healthMarkerLookup
+		);
+		console.log(
+			`🔄 Global hemogram extraction found ${globalResults.length} results`
+		);
+		return globalResults;
+	}
 
 	const hemogramSection = hemogramSectionMatch[0];
-	console.log('🔬 Parsing COMPLETE HEMOGRAM section');
+	console.log('🔬 Parsing HEMOGRAM section');
 
-	// ✅ FIXED: Define ALL expected hemogram labs (19 total)
+	// Define expected hemogram labs in order
 	const hemogramLabs = [
 		'RECUENTO GLOBULOS ROJOS',
 		'HEMATOCRITO',
@@ -1271,20 +1241,14 @@ function parseHemogramPanel(
 		'LINFOCITOS',
 		'MONOCITOS',
 		'NEUTROFILOS',
-		'BACILIFORMES', // ✅ ADDED
-		'JUVENILES', // ✅ ADDED
-		'MIELOCITOS', // ✅ ADDED
-		'PROMIELOCITOS', // ✅ ADDED
-		'BLASTOS', // ✅ ADDED
-		'V.H.S.', // ✅ ADDED
 	];
 
 	for (const labName of hemogramLabs) {
 		// Skip if already extracted
 		if (isAlreadyExtracted(results, labName)) continue;
 
-		// ✅ FIXED: Multiple patterns to catch all variations
-		const escapedLabName = labName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // ✅ FIXED: Multiple patterns to catch all variations
+		// Constrained pattern for this specific lab
+		const escapedLabName = labName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		const pattern = new RegExp(
 			`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\(([^)]+)\\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)`,
 			'g'
@@ -1321,88 +1285,8 @@ function parseHemogramPanel(
 				results.push(labResult);
 			}
 		}
-
-		const patterns = [
-			// Standard: HEMOGLOBINA 14,2 (g/dL) 12,3-15,3
-			new RegExp(
-				`(${escapedLabName})\\s+(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\s*\\(([^)]+)\\)\\s*([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)`,
-				'g'
-			),
-
-			// Embedded: HEMOGLOBINA14,2(g/dL) 12,3-15,3
-			new RegExp(
-				`(${escapedLabName})(\\d+(?:,\\d+)?(?:\\.\\d+)?)\\(([^)]+)\\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)`,
-				'g'
-			),
-
-			// Special for V.H.S. - may be "No procesado por falta de insumos"
-			labName === 'V.H.S.'
-				? new RegExp(
-						`(V\\.H\\.S\\.)\\s+(No procesado[^\\n]*|\\d+(?:,\\d+)?(?:\\.\\d+)?)\\s*(?:\\(([^)]+)\\))?\\s*([^\\n]*?)`,
-						'g'
-					)
-				: null,
-
-			// Qualitative results for blood differential (0 values)
-			new RegExp(
-				`(${escapedLabName})\\s*(\\d+)\\s*(?:\\(([^)]+)\\))?\\s*([^\\n]*?)`,
-				'g'
-			),
-		].filter(Boolean);
-
-		let found = false;
-		for (const pattern of patterns) {
-			const match = pattern!.exec(hemogramSection);
-			if (match && !found) {
-				const [, examen, resultado, unidad, rangeData] = match;
-
-				// Special handling for V.H.S.
-				let cleanResultado: string | number = resultado.trim();
-				if (labName === 'V.H.S.' && resultado.includes('No procesado')) {
-					cleanResultado = 'No procesado por falta de insumos';
-				} else if (!isNaN(parseFloat(resultado.replace(',', '.')))) {
-					cleanResultado = parseFloat(resultado.replace(',', '.'));
-				}
-
-				// Extract clean range
-				let cleanRange = rangeData
-					.replace(/Citometría de flujo.*$/g, '')
-					.replace(/Colorimetria.*$/g, '')
-					.trim();
-
-				const rangeMatch = cleanRange.match(/\d+(?:[,.-]\d+)?/);
-				cleanRange = rangeMatch ? rangeMatch[0] : '';
-
-				const labResult = createLabResult({
-					examen: examen.trim(),
-					resultado: cleanResultado,
-					unidad: unidad?.trim() || (labName.includes('%') ? '%' : null),
-					valorReferencia:
-						cleanRange || CHILEAN_LAB_FORMATS[labName]?.normalRange || null,
-					metodo: 'Citometría de flujo',
-					tipoMuestra: 'SANGRE TOTAL + E.D.T.A.',
-					isAbnormal: false,
-					abnormalIndicator: '',
-					resultType:
-						typeof cleanResultado === 'number' ? 'numeric' : 'qualitative',
-					confidence: 95,
-					position: 0,
-					context: match[0],
-					healthMarkerLookup,
-				});
-
-				if (labResult) {
-					console.log(
-						`✅ Complete Hemogram: ${labResult.examen} = ${labResult.resultado}`
-					);
-					results.push(labResult);
-					found = true;
-				}
-			}
-		}
 	}
 
-	console.log(`🩸 Hemogram extraction: ${results.length}/19 parameters found`);
 	return results;
 }
 
@@ -1508,7 +1392,8 @@ function filterMetadataContamination(text: string): string {
  * Handles variations like VITAMINA B vs VITAMINA B12, PLAQUETAS vs RECUENTO PLAQUETAS
  */
 const CANONICAL_LAB_ALIASES: Record<string, string> = {
-	// Vitamin variations - removed problematic 'VITAMINA B' alias
+	// Vitamin variations
+	'VITAMINA B': 'VITAMINA B12',
 	'VITAMINA B 12': 'VITAMINA B12',
 	'VIT B12': 'VITAMINA B12',
 	COBALAMINA: 'VITAMINA B12',
@@ -1517,11 +1402,6 @@ const CANONICAL_LAB_ALIASES: Record<string, string> = {
 	PLAQUETAS: 'RECUENTO PLAQUETAS',
 	'RECUENTO DE PLAQUETAS': 'RECUENTO PLAQUETAS',
 	PLT: 'RECUENTO PLAQUETAS',
-
-	// Electrolyte variations - map short names to full names  
-	SODIO: 'SODIO (Na) EN SANGRE',
-	POTASIO: 'POTASIO (K) EN SANGRE',
-	CLORO: 'CLORO (Cl) EN SANGRE',
 
 	// Alkaline phosphatase variations
 	'ALCALINAS (ALP)': 'FOSF. ALCALINAS (ALP)',
@@ -1533,7 +1413,7 @@ const CANONICAL_LAB_ALIASES: Record<string, string> = {
 	ERITROCITOS: 'RECUENTO GLOBULOS ROJOS',
 	RBC: 'RECUENTO GLOBULOS ROJOS',
 	'GLOBULOS BLANCOS': 'RECUENTO GLOBULOS BLANCOS',
-	// Note: LEUCOCITOS removed - needs context-aware mapping (blood vs urine)
+	LEUCOCITOS: 'RECUENTO GLOBULOS BLANCOS',
 	WBC: 'RECUENTO GLOBULOS BLANCOS',
 
 	// Hemoglobin variations
@@ -1544,8 +1424,9 @@ const CANONICAL_LAB_ALIASES: Record<string, string> = {
 	HCT: 'HEMATOCRITO',
 	HCTO: 'HEMATOCRITO',
 
-	// Glucose variations - Note: GLUCOSA removed to prevent urine/blood confusion
+	// Glucose variations
 	GLICEMIA: 'GLICEMIA EN AYUNO (BASAL)',
+	GLUCOSA: 'GLICEMIA EN AYUNO (BASAL)',
 	'GLICEMIA BASAL': 'GLICEMIA EN AYUNO (BASAL)',
 	GLUCOSE: 'GLICEMIA EN AYUNO (BASAL)',
 
@@ -1572,8 +1453,11 @@ const CANONICAL_LAB_ALIASES: Record<string, string> = {
 };
 
 /**
- * ✅ ChatGPT Strategy: Normalization pipeline for better data quality
+ * ✅ Modular Implementation: Data processing functions imported from extractors/
+ * Functions like cleanReferenceValue, normalizeLabResult, filterNoiseResults, etc.
+ * are now centralized in extractors/data-processing.ts and extractors/utils.ts
  */
+
 function normalizeLabResult(
 	result: ComprehensiveLabResult
 ): ComprehensiveLabResult {
@@ -1598,6 +1482,11 @@ function normalizeLabResult(
 			.trim();
 	}
 
+	// Clean malformed reference values
+	if (result.valorReferencia) {
+		result.valorReferencia = cleanReferenceValue(result.valorReferencia);
+	}
+
 	// Apply canonical aliases for exam names
 	const upperExamen = result.examen.toUpperCase().trim();
 	if (CANONICAL_LAB_ALIASES[upperExamen]) {
@@ -1607,7 +1496,7 @@ function normalizeLabResult(
 		result.examen = result.examen
 			.replace(/\s+/g, ' ')
 			.replace(/GLICEMIA\s+EN\s+AYUNAS?/gi, 'GLICEMIA EN AYUNO (BASAL)')
-			// Note: GLUCOSA EN AYUNO rule removed to prevent urine glucose confusion
+			.replace(/GLUCOSA\s+EN\s+AYUNO/gi, 'GLICEMIA EN AYUNO (BASAL)')
 			.replace(/^HBA1C$/gi, 'HEMOGLOBINA GLICADA A1C')
 			.replace(/^TSH$/gi, 'H. TIROESTIMULANTE (TSH)')
 			.replace(/^T4\s+LIBRE$/gi, 'H. TIROXINA LIBRE (T4 LIBRE)')
@@ -1752,6 +1641,38 @@ function filterNoiseResults(
 			return false;
 		}
 
+		// Filter out malformed parameter names that contain concatenated values
+		const examName = result.examen.toUpperCase().trim();
+		
+		// Check for numeric concatenation at the end (e.g., "HEMOGLOBINA14.2", "COLESTEROL213")
+		if (/[A-Z][0-9]/.test(examName) && !/\d+(?:,\d+)?(?:\.\d+)?$/.test(examName)) {
+			console.log(`❌ Dropped concatenated parameter: "${result.examen}"`);
+			return false;
+		}
+
+		// Check for incomplete fragments (common pattern: ends with comma followed by letters)
+		if (/,\s*[A-Z]+$/.test(examName) || /^[A-Z]+,$/.test(examName)) {
+			console.log(`❌ Dropped fragmented parameter: "${result.examen}"`);
+			return false;
+		}
+
+		// Filter out malformed compound names that are clearly fragmented
+		const fragmentedPatterns = [
+			/^(CELULAS|HEMATIES|LEUCOCITOS|SANGRE)\s*,?\s*$/i,
+			/^(NITROGENO|GLICEMIA|TIROXINA)\s*,?\s*$/i,
+			/^(CAMPO|AYUNO|LIBRE|UREICO)\s*$/i,
+			/EPITELI?ALES?No/i,
+			/CAMPOo/i,
+			/ORINANegativo/i,
+		];
+
+		for (const pattern of fragmentedPatterns) {
+			if (pattern.test(examName)) {
+				console.log(`❌ Dropped malformed fragment: "${result.examen}"`);
+				return false;
+			}
+		}
+
 		// Must have a result value
 		if (
 			result.resultado === null ||
@@ -1863,66 +1784,35 @@ export function extractAllLabResults(
 		// Clean contaminated fields within this block
 		const decontaminatedBlock = cleanContaminatedNormalRanges(filteredContent);
 
-		// Apply all extraction strategies to this isolated block
+		// Apply PRIMARY extraction strategies - avoid fallback methods that cause fragmentation
 		const blockResults = [
-			// Primary: EXACT LAB NAME + RESULT extraction with sample type context
-			...extractLabNamesAndResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			// Primary: EXACT LAB NAME + RESULT extraction
+			...extractLabNamesAndResults(decontaminatedBlock, healthMarkerLookup),
 
 			// Secondary: Dedicated parsers for complex sections
 			...parseLipidProfile(decontaminatedBlock, healthMarkerLookup),
 			...parseHemogramPanel(decontaminatedBlock, healthMarkerLookup),
-			...parseTabularElectrolytes(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...parseUrineAndSedimentResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
+			...parseElectrolytesSection(decontaminatedBlock, healthMarkerLookup),
 
-			// ✅ FIXED: Missing extractors for the 20 parameters
+			// Direct search for missing critical parameters
+			...extractMissingCriticalParams(decontaminatedBlock, healthMarkerLookup),
+
+			// Urine-specific extractors
 			...extractCompleteUrineAnalysis(decontaminatedBlock, healthMarkerLookup),
 			...extractUrineSedimentAnalysis(decontaminatedBlock, healthMarkerLookup),
-			...extractSerologyTests(decontaminatedBlock, healthMarkerLookup),
-			...extractMissingHemogramParams(decontaminatedBlock, healthMarkerLookup),
-			...extractMissingLipidParam(decontaminatedBlock, healthMarkerLookup),
 
 			// Tertiary: Group-aware 5-column parsing
 			...extractLabsByGroupStructure(decontaminatedBlock, healthMarkerLookup),
 
-			// Fallback: Legacy extraction strategies
-			...extractNumericResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...extractEmbeddedMultiResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...extractQualitativeResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...extractCalculatedResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...extractMicroscopyResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
-			...extractTabularResults(
-				decontaminatedBlock,
-				healthMarkerLookup,
-				block.sampleType
-			),
+			// Only use HIGH-QUALITY fallback methods
+			...extractNumericResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			...extractQualitativeResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			
+			// Disable fragmentation-causing methods temporarily
+			// ...extractEmbeddedMultiResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			// ...extractCalculatedResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			// ...extractMicroscopyResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
+			// ...extractTabularResults(decontaminatedBlock, healthMarkerLookup, block.sampleType),
 		];
 
 		// Set correct sample type for all results from this block
@@ -1956,38 +1846,7 @@ export function extractAllLabResults(
 	console.log(
 		`🎯 Enhanced extraction pipeline completed: ${uniqueResults.length} high-quality results`
 	);
-
-	// ✅ NEW: Run global fallback extraction for any remaining missing parameters
-	console.log(`🌍 Running global fallback extraction...`);
-	const globalResults = extractMissingParametersGlobally(cleanedText, healthMarkerLookup, uniqueResults);
-	
-	// Merge global results with main results
-	const finalResults = [...uniqueResults, ...globalResults];
-	
-	// Remove duplicates again after adding global results
-	const finalUniqueResults = removeDuplicateResults(finalResults);
-
-	console.log(
-		`🎯 Final extraction with global fallback: ${finalUniqueResults.length} total results`
-	);
-
-	// ✅ FIXED: Debug analysis of extraction results
-	// debugExtractionResults(finalUniqueResults, cleanedText); // Debug function temporarily disabled
-
-	// ✅ FIXED: Report on missing parameters
-	const expectedCount = 68;
-	const missingCount = expectedCount - finalUniqueResults.length;
-
-	if (missingCount > 0) {
-		console.warn(
-			`⚠️ Still missing ${missingCount} parameters out of ${expectedCount} expected`
-		);
-		console.warn('Check debug analysis above for specific missing parameters');
-	} else {
-		console.log('🎉 SUCCESS: All 68 parameters extracted!');
-	}
-
-	return finalUniqueResults;
+	return uniqueResults;
 }
 
 /**
@@ -2028,17 +1887,14 @@ function extractNumericResults(
 			'gm'
 		),
 
-		// Enhanced embedded patterns - stop at next ALL-CAPS lab name (CHCM before HCM to avoid mismatches)
-		/(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|HEMOGLOBINA|HEMATOCRITO|VCM|CHCM|HCM|PLAQUETAS|LEUCOCITOS|NEUTROFILOS|LINFOCITOS|MONOCITOS|EOSINOFILOS|BASOFILOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
+		// Enhanced embedded patterns - stop at next ALL-CAPS lab name
+		/(COLESTEROL TOTAL|COLESTEROL HDL|COLESTEROL LDL|HEMOGLOBINA|HEMATOCRITO|VCM|HCM|CHCM|PLAQUETAS|LEUCOCITOS|NEUTROFILOS|LINFOCITOS|MONOCITOS|EOSINOFILOS|BASOFILOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
 
-		// Blood count embedded - stop before next lab (C.H.C.M before H.C.M to avoid mismatches)
-		/(RECUENTO GLOBULOS [A-Z]+|HEMATOCRITO|V\.C\.M|C\.H\.C\.M|H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS BLANCOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
+		// Blood count embedded - stop before next lab
+		/(RECUENTO GLOBULOS [A-Z]+|HEMATOCRITO|V\.C\.M|H\.C\.M|C\.H\.C\.M|RECUENTO PLAQUETAS|RECUENTO GLOBULOS BLANCOS)(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
 
 		// Electrolytes embedded - constrained to not capture next lab
 		/(SODIO|POTASIO|CLORO|BICARBONATO)\s*(?:\([^)]+\))?\s*(?:EN SANGRE)?\s*(\d+(?:,\d+)?(?:\.\d+)?)\(([^)]+)\)([^A-ZÁÉÍÓÚÑ]*?)(?=[A-ZÁÉÍÓÚÑ]{3,}|$)/gi,
-
-		// Tabular electrolytes format: POTASIO (K) EN SANGRE          5,0                    (mEq/L)           3,5 - 5,1
-		/(SODIO|POTASIO|CLORO)\s*\([^)]+\)\s*EN SANGRE\s+(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+([0-9\-\s,\.]+)/gi,
 	];
 
 	for (const pattern of numericPatterns) {
@@ -2755,7 +2611,6 @@ function extractLabsByGroupStructure(
 	// Known lab group headers in Chilean reports
 	const labGroups = [
 		'ELECTROLITOS PLASMATICOS',
-		'ELECTROLITOS',
 		'PERFIL LIPIDICO',
 		'HEMOGRAMA - VHS',
 		'ORINA COMPLETA',
@@ -2881,41 +2736,6 @@ function parse5ColumnStructure(
 	lineIndex: number,
 	fullLine: string
 ): ComprehensiveLabResult | null {
-	// Special handling for tabular electrolytes format
-	// Example: "POTASIO (K) EN SANGRE          5,0                    (mEq/L)           3,5 - 5,1"
-	if (
-		labName.includes('SODIO') ||
-		labName.includes('POTASIO') ||
-		labName.includes('CLORO')
-	) {
-		const tabularMatch = restOfLine.match(
-			/^\s*(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+([\d\s\-,\.]+)(?:\s+([A-Za-z].*))?$/
-		);
-		if (tabularMatch) {
-			const [, resultado, unidad, valorReferencia, metodo = ''] = tabularMatch;
-
-			console.log(
-				`🧪 Tabular electrolyte: ${labName} = ${resultado} ${unidad} (${valorReferencia})`
-			);
-
-			return createLabResult({
-				examen: labName,
-				resultado: parseFloat(resultado.replace(',', '.')),
-				unidad: unidad.trim(),
-				valorReferencia: valorReferencia.trim() || null,
-				metodo: metodo.trim() || 'ISE Indirecto', // Default method for electrolytes
-				tipoMuestra: sampleType,
-				isAbnormal: false, // Will be determined by range check
-				abnormalIndicator: '',
-				resultType: 'numeric',
-				confidence: 95,
-				position: lineIndex,
-				context: fullLine,
-				healthMarkerLookup,
-			});
-		}
-	}
-
 	// Pattern to match: RESULT (UNIT) [*] NORMAL_RANGE METHOD
 	const patterns = [
 		// Standard: 269 (mg/dL) [ * ] 74 - 106 Hexoquinasa
@@ -3395,133 +3215,456 @@ function createLabResult(params: {
 }
 
 /**
- * 🔧 Remove duplicate results with sample type context
- * Keeps results separate by (exam + sample_type) to avoid inappropriate deduplication
- * Example: "Creatinina" in SUERO vs ORINA should be kept separately
+ * 🔧 Remove duplicate results with intelligent sample type priority
+ * Handles duplicates by preferring the most appropriate sample type:
+ * - Blood cells (LINFOCITOS, etc.): prefer SANGRE TOTAL over SUERO
+ * - Chemistry (Creatinina, etc.): keep separate by sample type
+ * - Urine (GLUCOSA, etc.): prefer ORINA over others when duplicated
  */
 function removeDuplicateResults(
 	results: ComprehensiveLabResult[]
 ): ComprehensiveLabResult[] {
 	const uniqueResults: ComprehensiveLabResult[] = [];
-	const seenExamenes = new Set<string>();
+	const seenExamenes = new Map<string, ComprehensiveLabResult>();
 
-	// Sort by confidence (highest first) then by result value completeness
+	// Define parameters that should be exclusive to specific sample types
+	const bloodOnlyParams = new Set([
+		'LINFOCITOS', 'NEUTROFILOS', 'MONOCITOS', 'EOSINOFILOS', 'BASOFILOS',
+		'BACILIFORMES', 'JUVENILES', 'MIELOCITOS', 'PROMIELOCITOS', 'BLASTOS',
+		'RECUENTO GLOBULOS ROJOS', 'RECUENTO GLOBULOS BLANCOS', 'RECUENTO PLAQUETAS',
+		'HEMATOCRITO', 'HEMOGLOBINA', 'V.C.M', 'H.C.M', 'C.H.C.M'
+	]);
+
+	// Define parameters that require sample type correction
+	const sampleTypeCorrections = new Map([
+		['RECUENTO PLAQUETAS', 'SANGRE TOTAL'],
+		['V.C.M', 'SANGRE TOTAL'],
+		['H.C.M', 'SANGRE TOTAL'],
+		['C.H.C.M', 'SANGRE TOTAL'],
+		['HEMATOCRITO', 'SANGRE TOTAL'],
+		['HEMOGLOBINA', 'SANGRE TOTAL'],
+		['LINFOCITOS', 'SANGRE TOTAL'],
+		['NEUTROFILOS', 'SANGRE TOTAL'],
+		['MONOCITOS', 'SANGRE TOTAL'],
+		['EOSINOFILOS', 'SANGRE TOTAL'],
+		['BASOFILOS', 'SANGRE TOTAL']
+	]);
+
+	const urineOnlyParams = new Set([
+		'GLUCOSA', 'PROTEINAS', 'SANGRE EN ORINA', 'CETONAS', 'BILIRRUBINA', 
+		'NITRITOS', 'LEUCOCITOS', 'UROBILINOGENO', 'COLOR', 'ASPECTO', 'DENSIDAD'
+	]);
+
+	// Sort by confidence (highest first), then by sample type preference
 	results.sort((a, b) => {
-		// First prioritize higher confidence
-		if (b.confidence !== a.confidence) {
-			return b.confidence - a.confidence;
+		if (b.confidence !== a.confidence) return b.confidence - a.confidence;
+		
+		// For blood-only params, prefer SANGRE TOTAL
+		const aExamen = a.examen.toUpperCase().trim();
+		if (bloodOnlyParams.has(aExamen)) {
+			if (a.tipoMuestra.includes('SANGRE TOTAL') && !b.tipoMuestra.includes('SANGRE TOTAL')) return -1;
+			if (!a.tipoMuestra.includes('SANGRE TOTAL') && b.tipoMuestra.includes('SANGRE TOTAL')) return 1;
 		}
-		// Then prioritize results with more complete data (units, reference values)
-		const aScore = (a.unidad ? 1 : 0) + (a.valorReferencia ? 1 : 0);
-		const bScore = (b.unidad ? 1 : 0) + (b.valorReferencia ? 1 : 0);
-		return bScore - aScore;
+		return 0;
 	});
 
 	for (const result of results) {
-		// Aggressive normalization for exact duplicate detection
-		let normalizedExamen = result.examen.toUpperCase().trim();
-
-		// Remove all punctuation, extra spaces, and normalize common patterns
-		normalizedExamen = normalizedExamen
-			.replace(/\s+/g, ' ') // Multiple spaces -> single space
-			.replace(/[.,:\-_]/g, '') // Remove punctuation that might vary
-			.replace(/\(\s*Na\s*\)/gi, 'NA') // Normalize sodium notation
-			.replace(/\(\s*K\s*\)/gi, 'K') // Normalize potassium notation
-			.replace(/\(\s*Cl\s*\)/gi, 'CL') // Normalize chlorine notation
-			.replace(/EN\s+SANGRE/gi, 'ENSANGRE') // Normalize blood tests
-			.replace(/RECUENTO\s+PLAQUETAS/gi, 'RECUENTOPLAQUETAS') // Normalize platelet count
-			.replace(/NEUTROFILOS/gi, 'NEUTROFILOS') // Normalize neutrophils
-			.replace(/\s/g, ''); // Remove all remaining spaces for exact matching
-
-		// Check for similar exam names that are likely the same test
-		const isDuplicate = uniqueResults.some((existing) => {
-			const existingNormalized = existing.examen
-				.toUpperCase()
-				.trim()
-				.replace(/\s+/g, ' ')
-				.replace(/[.,:\-_]/g, '')
-				.replace(/\(\s*Na\s*\)/gi, 'NA')
-				.replace(/\(\s*K\s*\)/gi, 'K')
-				.replace(/\(\s*Cl\s*\)/gi, 'CL')
-				.replace(/EN\s+SANGRE/gi, 'ENSANGRE')
-				.replace(/RECUENTO\s+PLAQUETAS/gi, 'RECUENTOPLAQUETAS')
-				.replace(/NEUTROFILOS/gi, 'NEUTROFILOS')
-				.replace(/\s/g, '');
-
-			const existingValue =
-				existing.resultado?.toString().replace(/[.,\s]/g, '') || '';
-			const currentValue =
-				result.resultado?.toString().replace(/[.,\s]/g, '') || '';
-
-			// Same exam name and same value = duplicate
-			if (
-				existingNormalized === normalizedExamen &&
-				existingValue === currentValue
-			) {
-				return true;
+		const examName = result.examen.toUpperCase().trim();
+		
+		// Apply sample type corrections before processing
+		if (sampleTypeCorrections.has(examName)) {
+			const correctSampleType = sampleTypeCorrections.get(examName)!;
+			if (result.tipoMuestra !== correctSampleType) {
+				console.log(`🔧 Corrected sample type for ${examName}: ${result.tipoMuestra} → ${correctSampleType}`);
+				result.tipoMuestra = correctSampleType;
 			}
-
-			// Special case: SODIO vs SODIO (Na) EN SANGRE with same value
-			if (
-				existingNormalized.includes('SODIO') &&
-				normalizedExamen.includes('SODIO') &&
-				existingValue === currentValue
-			) {
-				return true;
-			}
-
-			// Special case: POTASIO vs POTASIO (K) EN SANGRE with same value
-			if (
-				existingNormalized.includes('POTASIO') &&
-				normalizedExamen.includes('POTASIO') &&
-				existingValue === currentValue
-			) {
-				return true;
-			}
-
-			// Special case: CLORO vs CLORO (Cl) EN SANGRE with same value
-			if (
-				existingNormalized.includes('CLORO') &&
-				normalizedExamen.includes('CLORO') &&
-				existingValue === currentValue
-			) {
-				return true;
-			}
-
-			// Special case: Different VITAMINA B12 extractions - detect the problematic split
-			if (
-				(existingNormalized.includes('VITAMINAB12') &&
-					normalizedExamen.includes('VITAMINAB')) ||
-				(existingNormalized.includes('VITAMINAB') &&
-					normalizedExamen.includes('VITAMINAB12'))
-			) {
-				// Check if one value contains the digits from the other (like 12407 contains 407)
-				const existingStr = existingValue.replace(/[,\.]/g, '');
-				const currentStr = currentValue.replace(/[,\.]/g, '');
-				if (
-					existingStr.includes(currentStr) ||
-					currentStr.includes(existingStr)
-				) {
-					return true;
+		}
+		
+		if (bloodOnlyParams.has(examName)) {
+			// Blood parameters: only keep one, prefer SANGRE TOTAL
+			if (!seenExamenes.has(examName)) {
+				seenExamenes.set(examName, result);
+			} else {
+				const existing = seenExamenes.get(examName)!;
+				if (result.tipoMuestra.includes('SANGRE TOTAL') && !existing.tipoMuestra.includes('SANGRE TOTAL')) {
+					console.log(`🔄 Replaced ${examName}: ${existing.tipoMuestra} → ${result.tipoMuestra}`);
+					seenExamenes.set(examName, result);
+				} else {
+					console.log(`🔄 Skipped duplicate blood param: ${examName} (${result.tipoMuestra})`);
 				}
 			}
-
-			return false;
-		});
-
-		if (!isDuplicate) {
-			uniqueResults.push(result);
+		} else if (urineOnlyParams.has(examName) || urineOnlyParams.has(examName.replace('GLICEMIA EN AYUNO (BASAL)', 'GLUCOSA'))) {
+			// Urine parameters: only keep one, prefer ORINA
+			const normalizedName = examName === 'GLICEMIA EN AYUNO (BASAL)' ? 'GLUCOSA' : examName;
+			if (!seenExamenes.has(normalizedName)) {
+				seenExamenes.set(normalizedName, result);
+			} else {
+				const existing = seenExamenes.get(normalizedName)!;
+				if (result.tipoMuestra.includes('ORINA') && !existing.tipoMuestra.includes('ORINA')) {
+					console.log(`🔄 Replaced ${normalizedName}: ${existing.tipoMuestra} → ${result.tipoMuestra}`);
+					seenExamenes.set(normalizedName, result);
+				} else {
+					console.log(`🔄 Skipped duplicate urine param: ${normalizedName} (${result.tipoMuestra})`);
+				}
+			}
 		} else {
-			console.log(
-				`🔄 Skipped duplicate: "${result.examen}" (${result.tipoMuestra}, conf:${result.confidence}) -> normalized: "${normalizedExamen}"`
-			);
+			// Other parameters: use composite key to keep separate by sample type, but handle specific duplicates
+			if (examName === 'MICROALBUMINURIA AISLADA') {
+				// For microalbumin, prefer ORINA over SUERO
+				if (!seenExamenes.has(examName)) {
+					seenExamenes.set(examName, result);
+				} else {
+					const existing = seenExamenes.get(examName)!;
+					if (result.tipoMuestra.includes('ORINA') && !existing.tipoMuestra.includes('ORINA')) {
+						console.log(`🔄 Replaced ${examName}: ${existing.tipoMuestra} → ${result.tipoMuestra}`);
+						seenExamenes.set(examName, result);
+					} else {
+						console.log(`🔄 Skipped duplicate microalbumin: ${examName} (${result.tipoMuestra})`);
+					}
+				}
+			} else {
+				// Standard composite key approach for other parameters
+				const compositeKey = `${examName}|${result.tipoMuestra || 'UNKNOWN'}`;
+				if (!seenExamenes.has(compositeKey)) {
+					seenExamenes.set(compositeKey, result);
+				} else {
+					console.log(`🔄 Skipped duplicate: ${result.examen} (${result.tipoMuestra})`);
+				}
+			}
 		}
 	}
 
+	// Convert map values to array
+	uniqueResults.push(...Array.from(seenExamenes.values()));
+
 	console.log(
-		`🔧 Enhanced deduplication: ${results.length} → ${uniqueResults.length} results`
+		`🔧 Intelligent deduplication: ${results.length} → ${uniqueResults.length} results`
 	);
 	return uniqueResults;
+}
+
+/**
+ * Parse ELECTROLITOS PLASMATICOS section specifically
+ */
+function parseElectrolytesSection(
+	text: string,
+	healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+	const results: ComprehensiveLabResult[] = [];
+
+	// Look for electrolytes section
+	console.log('🔍 Looking for ELECTROLITOS PLASMATICOS section...');
+	const electrolytesMatch = text.match(
+		/ELECTROLITOS\s*PLASMATICOS[\s\S]*?(?=(?:Fecha de Recepción|$))/i
+	);
+	if (!electrolytesMatch) {
+		console.log('❌ No ELECTROLITOS PLASMATICOS section found');
+		// Try alternative patterns
+		const altMatch1 = text.match(/ELECTROLITOS[\s\S]*?POTASIO/i);
+		const altMatch2 = text.match(/POTASIO \(K\) EN SANGRE/i);
+		console.log(
+			`🔍 Alternative patterns: ELECTROLITOS+POTASIO=${!!altMatch1}, POTASIO direct=${!!altMatch2}`
+		);
+		return results;
+	}
+
+	const electrolytesSection = electrolytesMatch[0];
+	console.log('🔬 Parsing ELECTROLITOS PLASMATICOS section');
+
+	// Define expected electrolyte labs
+	const electrolyteLabs = [
+		'SODIO (Na) EN SANGRE',
+		'POTASIO (K) EN SANGRE',
+		'CLORO (Cl) EN SANGRE',
+	];
+
+	for (const labName of electrolyteLabs) {
+		// Pattern specific to electrolytes format from the image
+		const escapedLabName = labName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(
+			`${escapedLabName}\\s+([\\d,]+(?:\\.\\d+)?)\\s+\\(([^)]+)\\)\\s+([\\d,\\s\\-]+)`,
+			'i'
+		);
+
+		const match = pattern.exec(electrolytesSection);
+		if (match) {
+			const result = createLabResult({
+				examen: labName,
+				resultado: match[1].trim(),
+				unidad: match[2].trim(),
+				valorReferencia: match[3].trim(),
+				metodo: 'ISE Indirecto',
+				tipoMuestra: 'SUERO',
+				isAbnormal: false,
+				abnormalIndicator: '',
+				resultType: 'numeric',
+				confidence: 95,
+				position: 0,
+				context: match[0],
+				healthMarkerLookup,
+			});
+
+			if (result) {
+				results.push(result);
+				console.log(
+					`⚡ Electrolyte: ${result.examen} = ${result.resultado} ${result.unidad}`
+				);
+			}
+		} else {
+			console.log(`❌ Could not extract ${labName} from electrolytes section`);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Direct extraction for missing critical parameters with flexible patterns
+ */
+function extractMissingCriticalParams(
+	text: string,
+	healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+	const results: ComprehensiveLabResult[] = [];
+
+	console.log('🎯 Direct extraction for missing critical parameters');
+
+	// Define critical missing parameters with multiple pattern variations
+	const criticalParams = [
+		{
+			name: 'CLORO (Cl) EN SANGRE',
+			patterns: [
+				/CLORO \(Cl\) EN SANGRE\s+([\d,]+(?:\.\d+)?)/i,
+				/CLORO\s*\(Cl\)\s*EN\s*SANGRE\s+([\d,]+(?:\.\d+)?)/i,
+				/CLORO[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: 'mEq/L',
+			method: 'ISE Indirecto',
+			sampleType: 'SUERO',
+		},
+		{
+			name: 'R.P.R.',
+			patterns: [
+				/R\.P\.R\.\s*(No reactivo|Reactivo|Positivo|Negativo)/i,  // Fixed: \s* instead of \s+
+				/R\.P\.R\.\s*:\s*(No reactivo|Reactivo|Positivo|Negativo)/i,
+				/R\s*\.\s*P\s*\.\s*R\s*\.\s*(No reactivo|Reactivo|Positivo|Negativo)/i,  // Fixed: \s* instead of \s+
+			],
+			unit: null,
+			method: 'Aglutinación En Látex',
+			sampleType: 'SUERO',
+		},
+		{
+			name: 'COLESTEROL VLDL (CALCULO)',
+			patterns: [
+				/COLESTEROL VLDL \(CALCULO\)\s+([\d,]+(?:\.\d+)?)/i,
+				/COLESTEROL\s+VLDL\s*\(CALCULO\)\s+([\d,]+(?:\.\d+)?)/i,
+				/COLESTEROL\s+VLDL[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: 'mg/dL',
+			method: 'Cálculo',
+			sampleType: 'SUERO',
+		},
+		{
+			name: 'POTASIO (K) EN SANGRE',
+			patterns: [
+				/POTASIO \(K\) EN SANGRE\s+([\d,]+(?:\.\d+)?)/i,
+				/POTASIO\s*\(K\)\s*EN\s*SANGRE\s*([\d,]+(?:\.\d+)?)/i,
+				/POTASIO[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: 'mEq/L',
+			method: 'ISE Indirecto',
+			sampleType: 'SUERO',
+		},
+		{
+			name: 'HEMATOCRITO',
+			patterns: [
+				/HEMATOCRITO([\d,]+(?:\.\d+)?)/i,
+				/HEMATOCRITO\s*([\d,]+(?:\.\d+)?)/i,
+				/HEMATOCRITO[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: '%',
+			method: 'Citometría de flujo',
+			sampleType: 'SANGRE TOTAL + E.D.T.A.',
+		},
+		{
+			name: 'HEMOGLOBINA',
+			patterns: [
+				/HEMOGLOBINA([\d,]+(?:\.\d+)?)/i,
+				/HEMOGLOBINA\s+([\d,]+(?:\.\d+)?)/i,
+				/HEMOGLOBINA[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: 'g/dL',
+			method: 'Colorimetria',
+			sampleType: 'SANGRE TOTAL + E.D.T.A.',
+		},
+		{
+			name: 'COLESTEROL TOTAL',
+			patterns: [
+				/COLESTEROL TOTAL([\d,]+(?:\.\d+)?)/i,
+				/COLESTEROL\s+TOTAL\s+([\d,]+(?:\.\d+)?)/i,
+				/COLESTEROL\s+TOTAL[^\d]*([\d,]+(?:\.\d+)?)/i,
+			],
+			unit: 'mg/dL',
+			method: 'Enzimático',
+			sampleType: 'SUERO',
+		},
+	];
+
+	for (const param of criticalParams) {
+		let found = false;
+
+		for (const pattern of param.patterns) {
+			const match = text.match(pattern);
+			if (match && match[1]) {
+				const result = createLabResult({
+					examen: param.name,
+					resultado: match[1].trim(),
+					unidad: param.unit,
+					valorReferencia: '',
+					metodo: param.method,
+					tipoMuestra: param.sampleType,
+					isAbnormal: false,
+					abnormalIndicator: '',
+					resultType: 'numeric',
+					confidence: 95,
+					position: 0,
+					context: match[0],
+					healthMarkerLookup,
+				});
+
+				if (result) {
+					results.push(result);
+					console.log(
+						`🎯 Critical param found: ${result.examen} = ${result.resultado} ${result.unidad}`
+					);
+					found = true;
+					break;
+				}
+			}
+		}
+
+		if (!found) {
+			console.log(`❌ Could not find ${param.name}`);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Global fallback extraction for hemogram parameters
+ */
+function extractHemogramParametersGlobally(
+	text: string,
+	healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+	const results: ComprehensiveLabResult[] = [];
+
+	const hemogramParams = [
+		'HEMATOCRITO',
+		'HEMOGLOBINA',
+		'V.C.M',
+		'H.C.M',
+		'C.H.C.M',
+		'RECUENTO GLOBULOS ROJOS',
+		'RECUENTO GLOBULOS BLANCOS',
+		'RECUENTO PLAQUETAS',
+	];
+
+	console.log(
+		`🔍 Searching for ${hemogramParams.length} hemogram parameters globally`
+	);
+
+	for (const param of hemogramParams) {
+		// Global pattern to find parameter anywhere in text
+		const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(
+			`(${escapedParam})\\s*([\\d,]+(?:\\.\\d+)?)\\s*(?:\\(([^)]+)\\))?`,
+			'gi'
+		);
+
+		const match = pattern.exec(text);
+		if (match) {
+			const result = createLabResult({
+				examen: match[1].trim(),
+				resultado: match[2].trim(),
+				unidad: match[3] || '',
+				valorReferencia: '',
+				metodo: 'Citometría de flujo',
+				tipoMuestra: 'SANGRE TOTAL + E.D.T.A.',
+				isAbnormal: false,
+				abnormalIndicator: '',
+				resultType: 'numeric',
+				confidence: 0.8,
+				position: 0,
+				context: match[0],
+				healthMarkerLookup,
+			});
+
+			if (result) {
+				results.push(result);
+				console.log(
+					`🩸 Global hemogram: ${result.examen} = ${result.resultado}`
+				);
+			}
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Global fallback extraction for lipid parameters
+ */
+function extractLipidParametersGlobally(
+	text: string,
+	healthMarkerLookup: Map<string, HealthMarkerMapping>
+): ComprehensiveLabResult[] {
+	const results: ComprehensiveLabResult[] = [];
+
+	const lipidParams = [
+		'COLESTEROL TOTAL',
+		'COLESTEROL HDL',
+		'COLESTEROL LDL (CALCULO)',
+		'COLESTEROL VLDL (CALCULO)',
+		'TRIGLICERIDOS',
+		'CALCULO TOTAL/HDL',
+	];
+
+	for (const param of lipidParams) {
+		// Global pattern to find parameter anywhere in text
+		const escapedParam = param.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(
+			`(${escapedParam})\\s*([\\d,]+(?:\\.\\d+)?)\\s*(?:\\(([^)]+)\\))?`,
+			'gi'
+		);
+
+		const match = pattern.exec(text);
+		if (match) {
+			const result = createLabResult({
+				examen: match[1].trim(),
+				resultado: match[2].trim(),
+				unidad: match[3] || 'mg/dL',
+				valorReferencia: '',
+				metodo: 'Enzimático',
+				tipoMuestra: 'SUERO',
+				isAbnormal: false,
+				abnormalIndicator: '',
+				resultType: 'numeric',
+				confidence: 0.8,
+				position: 0,
+				context: match[0],
+				healthMarkerLookup,
+			});
+
+			if (result) {
+				results.push(result);
+				console.log(`🫀 Global lipid: ${result.examen} = ${result.resultado}`);
+			}
+		}
+	}
+
+	return results;
 }
 
 /**
@@ -3651,335 +3794,4 @@ function calculateClinicalSeverity(
 		isAbnormal: true,
 		deviationPercent: Math.round(deviationPercent),
 	};
-}
-
-/**
- * Parse tabular electrolytes format specifically
- * Handles format: POTASIO (K) EN SANGRE          5,0                    (mEq/L)           3,5 - 5,1
- */
-function parseTabularElectrolytes(
-	text: string,
-	healthMarkerLookup: Map<string, HealthMarkerMapping>,
-	sampleType: string
-): ComprehensiveLabResult[] {
-	const results: ComprehensiveLabResult[] = [];
-
-	console.log(
-		`🧪 parseTabularElectrolytes called with sampleType: ${sampleType}`
-	);
-
-	// Look for electrolytes section
-	if (!text.includes('ELECTROLITOS')) {
-		console.log(`❌ No ELECTROLITOS section found in text`);
-		return results;
-	}
-
-	console.log(`✅ Found ELECTROLITOS section`);
-
-	// Simple line-by-line approach for tabular format
-	const lines = text.split('\n');
-
-	for (const line of lines) {
-		// Look for POTASIO pattern
-		if (line.includes('POTASIO') && line.includes('EN SANGRE')) {
-			const match = line.match(
-				/POTASIO\s*\([^)]+\)\s*EN SANGRE\s+(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+([\d\s\-,\.]+)/
-			);
-			if (match) {
-				const [, resultado, unidad, valorReferencia] = match;
-				console.log(
-					`🧪 Found POTASIO: ${resultado} ${unidad} (${valorReferencia})`
-				);
-
-				const labResult = createLabResult({
-					examen: 'POTASIO (K) EN SANGRE',
-					resultado: parseFloat(resultado.replace(',', '.')),
-					unidad: unidad.trim(),
-					valorReferencia: valorReferencia.trim(),
-					metodo: 'ISE Indirecto',
-					tipoMuestra: sampleType,
-					isAbnormal: false,
-					abnormalIndicator: '',
-					resultType: 'numeric',
-					confidence: 98,
-					position: 0,
-					context: line,
-					healthMarkerLookup,
-				});
-
-				if (labResult) {
-					results.push(labResult);
-					console.log(`✅ Added POTASIO result`);
-				}
-			}
-		}
-
-		// Look for CLORO pattern
-		if (line.includes('CLORO') && line.includes('EN SANGRE')) {
-			const match = line.match(
-				/CLORO\s*\([^)]+\)\s*EN SANGRE\s+(\d+(?:,\d+)?(?:\.\d+)?)\s+\(([^)]+)\)\s+([\d\s\-,\.]+)/
-			);
-			if (match) {
-				const [, resultado, unidad, valorReferencia] = match;
-				console.log(
-					`🧪 Found CLORO: ${resultado} ${unidad} (${valorReferencia})`
-				);
-
-				const labResult = createLabResult({
-					examen: 'CLORO (Cl) EN SANGRE',
-					resultado: parseFloat(resultado.replace(',', '.')),
-					unidad: unidad.trim(),
-					valorReferencia: valorReferencia.trim(),
-					metodo: 'ISE Indirecto',
-					tipoMuestra: sampleType,
-					isAbnormal: false,
-					abnormalIndicator: '',
-					resultType: 'numeric',
-					confidence: 98,
-					position: 0,
-					context: line,
-					healthMarkerLookup,
-				});
-
-				if (labResult) {
-					results.push(labResult);
-					console.log(`✅ Added CLORO result`);
-				}
-			}
-		}
-	}
-
-	console.log(
-		`🧪 parseTabularElectrolytes returning ${results.length} results`
-	);
-	return results;
-}
-
-/**
- * 🔬 Parse urine analysis, urine sediment, and serology results
- * Handles the 11 missing parameters identified in logs: PH, GLUCOSA, LEUCOCITOS, etc.
- */
-function parseUrineAndSedimentResults(
-	text: string,
-	healthMarkerLookup: Map<string, HealthMarkerMapping>,
-	sampleType: string
-): ComprehensiveLabResult[] {
-	const results: ComprehensiveLabResult[] = [];
-	const lines = text.split('\n');
-
-	console.log('🔬 Starting specialized urine and sediment extraction...');
-
-	// Define specific patterns for the 11 missing parameters
-	const urinePatterns: Array<{
-		examen: string;
-		patterns: RegExp[];
-		unit: string;
-		sampleType: string;
-		category: string;
-		method?: string;
-	}> = [
-		// 1. PH - Urine analysis
-		{
-			examen: 'PH',
-			patterns: [
-				/\bPH\s+(\d+(?:[.,]\d+)?)/gi,
-				/\bPH\s*:\s*(\d+(?:[.,]\d+)?)/gi,
-				/\bPH\s*=\s*(\d+(?:[.,]\d+)?)/gi,
-				/ORINA.*?PH\s+(\d+(?:[.,]\d+)?)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine',
-			method: 'Tira reactiva'
-		},
-
-		// 2. GLUCOSA - Urine analysis  
-		{
-			examen: 'GLUCOSA',
-			patterns: [
-				/\bGLUCOSA\s+(Negativo|Positivo|Trazas|\d+\+?)/gi,
-				/\bGLUCOSA\s*:\s*(Negativo|Positivo|Trazas|\d+\+?)/gi,
-				/ORINA.*?GLUCOSA\s+(Negativo|Positivo|Trazas|\d+\+?)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine',
-			method: 'Tira reactiva'
-		},
-
-		// 3. LEUCOCITOS - Urine analysis
-		{
-			examen: 'LEUCOCITOS',
-			patterns: [
-				/\bLEUCOCITOS\s+(Negativo|Positivo|Trazas|\d+\+?|\d+(?:[.,]\d+)?)/gi,
-				/\bLEUCOCITOS\s*:\s*(Negativo|Positivo|Trazas|\d+\+?|\d+(?:[.,]\d+)?)/gi,
-				/ORINA.*?LEUCOCITOS\s+(Negativo|Positivo|Trazas|\d+\+?|\d+(?:[.,]\d+)?)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine',
-			method: 'Tira reactiva'
-		},
-
-		// 4. HEMATIES POR CAMPO - Urine sediment
-		{
-			examen: 'HEMATIES POR CAMPO',
-			patterns: [
-				/\bHEMATIES\s+POR\s+CAMPO\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-				/\bHEMATIES\/CAMPO\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-				/\bHEMATIES\s*:\s*(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)\s*\/?\s*CAMPO/gi,
-				/SEDIMENTO.*?HEMATIES\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-			],
-			unit: '/campo',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 5. LEUCOCITOS POR CAMPO - Urine sediment
-		{
-			examen: 'LEUCOCITOS POR CAMPO',
-			patterns: [
-				/\bLEUCOCITOS\s+POR\s+CAMPO\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-				/\bLEUCOCITOS\/CAMPO\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-				/\bLEUCOCITOS\s*:\s*(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)\s*\/?\s*CAMPO/gi,
-				/SEDIMENTO.*?LEUCOCITOS\s+(\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?)/gi,
-			],
-			unit: '/campo',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 6. CELULAS EPITELIALES - Urine sediment
-		{
-			examen: 'CELULAS EPITELIALES',
-			patterns: [
-				/\bCELULAS\s+EPITELIALES\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+(?:[.,]\d+)?)/gi,
-				/\bCEL\.?\s*EPITELIALES\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+(?:[.,]\d+)?)/gi,
-				/\bEPITELIALES\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+(?:[.,]\d+)?)/gi,
-				/SEDIMENTO.*?CELULAS\s+EPITELIALES\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+(?:[.,]\d+)?)/gi,
-			],
-			unit: '/campo',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 7. MUCUS - Urine sediment
-		{
-			examen: 'MUCUS',
-			patterns: [
-				/\bMUCUS\s+(Escaso|Moderado|Abundante|\d+\+?|Negativo)/gi,
-				/\bMUCUS\s*:\s*(Escaso|Moderado|Abundante|\d+\+?|Negativo)/gi,
-				/SEDIMENTO.*?MUCUS\s+(Escaso|Moderado|Abundante|\d+\+?|Negativo)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 8. CRISTALES - Urine sediment
-		{
-			examen: 'CRISTALES',
-			patterns: [
-				/\bCRISTALES\s+(No se observan|Escasos?|Moderados?|Abundantes?|Oxalato de calcio|Acido urico)/gi,
-				/\bCRISTALES\s*:\s*(No se observan|Escasos?|Moderados?|Abundantes?|Oxalato de calcio|Acido urico)/gi,
-				/SEDIMENTO.*?CRISTALES\s+(No se observan|Escasos?|Moderados?|Abundantes?|Oxalato de calcio|Acido urico)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 9. CILINDROS - Urine sediment
-		{
-			examen: 'CILINDROS',
-			patterns: [
-				/\bCILINDROS\s+(No se observan|Hialinos|Granulosos|Leucocitarios|\d+(?:[.,]\d+)?)/gi,
-				/\bCILINDROS\s*:\s*(No se observan|Hialinos|Granulosos|Leucocitarios|\d+(?:[.,]\d+)?)/gi,
-				/SEDIMENTO.*?CILINDROS\s+(No se observan|Hialinos|Granulosos|Leucocitarios|\d+(?:[.,]\d+)?)/gi,
-			],
-			unit: '/campo',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 10. BACTERIAS - Urine sediment
-		{
-			examen: 'BACTERIAS',
-			patterns: [
-				/\bBACTERIAS\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+\+?)/gi,
-				/\bBACTERIAS\s*:\s*(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+\+?)/gi,
-				/SEDIMENTO.*?BACTERIAS\s+(Escasas?|Moderadas?|Abundantes?|Numerosas?|\d+\+?)/gi,
-			],
-			unit: '',
-			sampleType: 'ORINA',
-			category: 'urine_sediment',
-			method: 'Microscopia'
-		},
-
-		// 11. R.P.R. - Serology test
-		{
-			examen: 'R.P.R.',
-			patterns: [
-				/\bR\.P\.R\.?\s+(No reactivo|Reactivo|Negativo|Positivo)/gi,
-				/\bR\.P\.R\.?\s*:\s*(No reactivo|Reactivo|Negativo|Positivo)/gi,
-				/\bRPR\s+(No reactivo|Reactivo|Negativo|Positivo)/gi,
-				/SEROLOGIA.*?R\.P\.R\.?\s+(No reactivo|Reactivo|Negativo|Positivo)/gi,
-			],
-			unit: '',
-			sampleType: 'SUERO',
-			category: 'serology',
-			method: 'RPR'
-		}
-	];
-
-	// Process each pattern
-	for (const patternDef of urinePatterns) {
-		for (const pattern of patternDef.patterns) {
-			let match;
-			pattern.lastIndex = 0; // Reset regex
-
-			while ((match = pattern.exec(text)) !== null) {
-				const [fullMatch, resultado] = match;
-				
-				console.log(`🔍 Found ${patternDef.examen}: ${resultado}`);
-
-				// Determine if result is numeric or qualitative
-				const numericResult = parseFloat(resultado.replace(',', '.'));
-				const isNumeric = !isNaN(numericResult);
-
-				const labResult = createLabResult({
-					examen: patternDef.examen,
-					resultado: isNumeric ? numericResult : resultado.trim(),
-					unidad: patternDef.unit,
-					valorReferencia: '', // Will be filled by reference stitching if available
-					metodo: patternDef.method || '',
-					tipoMuestra: patternDef.sampleType,
-					isAbnormal: false, // Will be determined by abnormal detection
-					abnormalIndicator: '',
-					resultType: isNumeric ? 'numeric' : 'qualitative',
-					confidence: 95,
-					position: match.index || 0,
-					context: fullMatch,
-					healthMarkerLookup,
-				});
-
-				if (labResult) {
-					results.push(labResult);
-					console.log(`✅ Added ${patternDef.examen} result: ${resultado}`);
-				}
-
-				// Break after first match to avoid duplicates
-				break;
-			}
-		}
-	}
-
-	console.log(`🔬 parseUrineAndSedimentResults returning ${results.length} results`);
-	return results;
 }

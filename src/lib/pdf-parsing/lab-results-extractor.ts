@@ -108,9 +108,6 @@ function extractFolio(text: string): string | null {
 }
 
 /**
- * Extracts dates from PDF text
- */
-/**
  * Converts Chilean date format DD/MM/YYYY to ISO format YYYY-MM-DD
  */
 function convertChileanDateToISO(chileanDate: string | null): string | null {
@@ -148,6 +145,9 @@ function convertChileanDateToISO(chileanDate: string | null): string | null {
   }
 }
 
+/**
+ * Extracts dates from PDF text
+ */
 function extractDates(text: string): {
   fechaIngreso: string | null
   tomaMuestra: string | null
@@ -184,7 +184,8 @@ function extractDates(text: string): {
         // Convert Chilean date to ISO format for database compatibility
         const chileanDate = match[1].trim()
         const isoDate = convertChileanDateToISO(chileanDate)
-        result[dateType as keyof typeof result] = isoDate
+        // Use ISO date if conversion successful, otherwise keep original format
+        result[dateType as keyof typeof result] = isoDate || chileanDate
         break
       }
     }
@@ -797,65 +798,151 @@ export async function extractCompleteLabReport(pdfBuffer: Buffer): Promise<Compl
     
     // Try comprehensive extractor first (best coverage)
     const comprehensiveResults = extractAllLabResults(fullText)
+    console.log(`🔍 DEBUG: Comprehensive extractor returned ${comprehensiveResults.length} results`)
+    
+    // Debug: List all found results
+    console.log('📋 Found results:')
+    comprehensiveResults.forEach((result, index) => {
+      console.log(`${index + 1}. ${result.examen}`)
+    })
+    
+    // Debug: Check missing critical parameters
+    const expectedParams = [
+      'MICROALBUMINURIA AISLADA', 'CREATINURIA AISLADA', 'MAU-RAC (calculo)',
+      'CALCULO TOTAL/HDL', 'BACILIFORMES', 'JUVENILES', 'MIELOCITOS', 'PROMIELOCITOS', 'BLASTOS'
+    ]
+    const foundExams = comprehensiveResults.map(r => r.examen.toUpperCase())
+    const missing = expectedParams.filter(param => 
+      !foundExams.some(found => found.includes(param.toUpperCase()))
+    )
+    console.log(`❌ Missing expected parameters: ${missing.join(', ')}`)
+    
+    // Debug: Test specific search for POTASIO
+    if (fullText.includes('POTASIO')) {
+      console.log('🔍 POTASIO found in text, testing specific patterns:')
+      const potasioPattern1 = /POTASIO \(K\) EN SANGRE\s+([^\n]+)/i
+      const potasioPattern2 = /POTASIO[^\n]*/gi
+      const match1 = fullText.match(potasioPattern1)
+      const matches2 = fullText.match(potasioPattern2)
+      console.log('Pattern 1 match:', match1 ? match1[0] : 'NO MATCH')
+      console.log('Pattern 2 matches:', matches2 ? matches2.slice(0, 3) : 'NO MATCHES')
+      
+      // Find exact context around POTASIO
+      const potasioIndex = fullText.indexOf('POTASIO')
+      if (potasioIndex !== -1) {
+        const contextStart = Math.max(0, potasioIndex - 50)
+        const contextEnd = Math.min(fullText.length, potasioIndex + 150)
+        const context = fullText.substring(contextStart, contextEnd)
+        console.log('POTASIO context:', JSON.stringify(context))
+      }
+    } else {
+      console.log('❌ POTASIO string not found in PDF text at all!')
+    }
+    
+    // Debug: Check if missing parameters exist in PDF text
+    const criticalMissing = ['HEMATOCRITO', 'HEMOGLOBINA', 'COLESTEROL TOTAL', 'POTASIO']
+    console.log('🔍 Checking for critical missing parameters in PDF text:')
+    criticalMissing.forEach(param => {
+      const found = fullText.includes(param)
+      console.log(`  ${param}: ${found ? '✅ FOUND in PDF' : '❌ NOT FOUND in PDF'}`)
+      
+      // Show context for found parameters
+      if (found) {
+        const index = fullText.indexOf(param)
+        const contextStart = Math.max(0, index - 30)
+        const contextEnd = Math.min(fullText.length, index + 100)
+        const context = fullText.substring(contextStart, contextEnd)
+        console.log(`    Context: ${JSON.stringify(context)}`)
+      }
+    })
     let labResults: LabResult[] = []
     
-    // Always use comprehensive results if function executed successfully
-    // Convert comprehensive results to LabResult format
-    labResults = comprehensiveResults.map((comp: any) => ({
-      examen: comp.examen,
-      resultado: comp.resultado ?? '',
-      unidad: comp.unidad ?? '',
-      valorReferencia: comp.valorReferencia ?? '',
-      metodo: comp.metodo ?? '',
-      tipoMuestra: comp.tipoMuestra,
-      isAbnormal: comp.isAbnormal,
-      abnormalIndicator: comp.abnormalIndicator,
-      systemCode: comp.systemCode,
-      category: comp.category,
-      priority: comp.priority,
-      confidence: comp.confidence,
-      position: comp.position,
-      context: comp.context
-    }))
-    
-    console.log(`✅ Comprehensive extractor found ${labResults.length} results`)
-    
-    // If still not reaching optimal results, try fallback extraction
-    if (labResults.length < 60) {
-      console.log('🔄 Adding fallback extraction for remaining results...')
+    if (comprehensiveResults.length > 0) {
+      // Convert comprehensive results to LabResult format
+      labResults = comprehensiveResults.map((comp: any) => ({
+        examen: comp.examen,
+        resultado: comp.resultado ?? '',
+        unidad: comp.unidad ?? '',
+        valorReferencia: comp.valorReferencia ?? '',
+        metodo: comp.metodo ?? '',
+        tipoMuestra: comp.tipoMuestra,
+        isAbnormal: comp.isAbnormal,
+        abnormalIndicator: comp.abnormalIndicator,
+        systemCode: comp.systemCode,
+        category: comp.category,
+        priority: comp.priority,
+        confidence: comp.confidence,
+        position: comp.position,
+        context: comp.context
+      }))
       
-      const fallbackResults = extractLabResults(fullText)
-      const simpleResults = extractLabResultsSimple(fullText)
+      console.log(`✅ Comprehensive extractor found ${labResults.length} results`)
       
-      // Merge unique results from fallbacks
-      const existingExams = new Set(labResults.map(r => r.examen.toLowerCase().trim()))
+      // If still not reaching 68 results, try fallback extraction
+      if (labResults.length < 60) {
+        console.log('🔄 Adding fallback extraction for remaining results...')
+        
+        const fallbackResults = extractLabResults(fullText)
+        const simpleResults = extractLabResultsSimple(fullText)
+        
+        // Merge unique results from fallbacks
+        const existingExams = new Set(labResults.map(r => r.examen.toLowerCase().trim()))
+        
+        const allFallbackResults = [...fallbackResults, ...simpleResults.map(simple => ({
+          examen: simple.examen,
+          resultado: simple.resultado,
+          unidad: simple.unidad,
+          valorReferencia: simple.valorReferencia,
+          metodo: simple.metodo,
+          tipoMuestra: simple.tipoMuestra,
+          isAbnormal: simple.isAbnormal,
+          abnormalIndicator: simple.abnormalIndicator,
+          systemCode: simple.systemCode,
+          category: simple.category,
+          priority: simple.priority,
+          confidence: simple.confidence,
+          position: simple.position,
+          context: simple.context
+        }))]
+        
+        allFallbackResults.forEach(result => {
+          const examKey = result.examen.toLowerCase().trim()
+          if (!existingExams.has(examKey)) {
+            labResults.push(result)
+            existingExams.add(examKey)
+          }
+        })
+        
+        console.log(`✅ Total after fallbacks: ${labResults.length} results`)
+      }
+    } else {
+      // Fallback to original extraction methods
+      console.log('🔄 Comprehensive extractor failed, using fallback methods...')
+      labResults = extractLabResults(fullText)
       
-      const allFallbackResults = [...fallbackResults, ...simpleResults.map(simple => ({
-        examen: simple.examen,
-        resultado: simple.resultado,
-        unidad: simple.unidad,
-        valorReferencia: simple.valorReferencia,
-        metodo: simple.metodo,
-        tipoMuestra: simple.tipoMuestra,
-        isAbnormal: simple.isAbnormal,
-        abnormalIndicator: simple.abnormalIndicator,
-        systemCode: simple.systemCode,
-        category: simple.category,
-        priority: simple.priority,
-        confidence: simple.confidence,
-        position: simple.position,
-        context: simple.context
-      }))]
-      
-      allFallbackResults.forEach(result => {
-        const examKey = result.examen.toLowerCase().trim()
-        if (!existingExams.has(examKey)) {
-          labResults.push(result)
-          existingExams.add(examKey)
-        }
-      })
-      
-      console.log(`✅ Total after fallbacks: ${labResults.length} results`)
+      if (labResults.length === 0) {
+        console.log('🔄 Complex extractor failed, trying simple patterns...')
+        const simpleResults = extractLabResultsSimple(fullText)
+        
+        labResults = simpleResults.map(simple => ({
+          examen: simple.examen,
+          resultado: simple.resultado,
+          unidad: simple.unidad,
+          valorReferencia: simple.valorReferencia,
+          metodo: simple.metodo,
+          tipoMuestra: simple.tipoMuestra,
+          isAbnormal: simple.isAbnormal,
+          abnormalIndicator: simple.abnormalIndicator,
+          systemCode: simple.systemCode,
+          category: simple.category,
+          priority: simple.priority,
+          confidence: simple.confidence,
+          position: simple.position,
+          context: simple.context
+        }))
+        
+        console.log(`✅ Simple extractor found ${labResults.length} results`)
+      }
     }
     
     // Calculate metadata
