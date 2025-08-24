@@ -14,6 +14,8 @@ import { authOptions } from '@/lib/auth/config';
 import { supabase } from '@/lib/database/supabase';
 import { supabaseAdmin } from '@/lib/database/supabase-admin';
 import { extractCompleteLabReport } from '@/lib/pdf-parsing/lab-results-extractor';
+import { extractAllLabResults } from '@/lib/pdf-parsing/comprehensive-lab-extractor';
+import pdfParse from 'pdf-parse';
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -150,8 +152,20 @@ export async function POST(request: NextRequest) {
 		const arrayBuffer = await file.arrayBuffer();
 		const pdfBuffer = Buffer.from(arrayBuffer);
 
-		// Extract complete lab report
+		// Extract complete lab report using original extractor for metadata
 		const extractionResult = await extractCompleteLabReport(pdfBuffer);
+		
+		// If successful, replace lab results with comprehensive extraction
+		if (extractionResult.success) {
+			const pdfData = await pdfParse(pdfBuffer);
+			const comprehensiveResults = extractAllLabResults(pdfData.text);
+			
+			// Replace lab results with comprehensive extraction
+			extractionResult.labResults = comprehensiveResults;
+			extractionResult.metadata.totalResults = comprehensiveResults.length;
+			extractionResult.metadata.abnormalCount = comprehensiveResults.filter(r => r.isAbnormal).length;
+			extractionResult.metadata.criticalCount = comprehensiveResults.filter(r => r.priority === 'critical').length;
+		}
 
 		if (!extractionResult.success) {
 			return NextResponse.json(
@@ -228,18 +242,18 @@ export async function POST(request: NextRequest) {
 
 					return {
 						examen: result.examen,
-						resultado: result.resultado.toString(), // Always convert to string now
-						unidad: result.unidad,
-						valorReferencia: result.valorReferencia,
-						metodo: result.metodo,
+						resultado: result.resultado?.toString() || '', // Handle null resultado
+						unidad: result.unidad || '', // Handle null unidad
+						valorReferencia: result.valorReferencia || '',
+						metodo: result.metodo || '',
 						tipoMuestra: mapSampleType(result.tipoMuestra),
-						systemCode: result.systemCode,
+						systemCode: result.systemCode || '',
 						category: mapCategory(result.category),
 						priority: mapPriorityToEnglish(result.priority || 'medium'),
-						isAbnormal: result.isAbnormal,
-						abnormalIndicator: result.abnormalIndicator,
-						confidence: result.confidence,
-						context: result.context,
+						isAbnormal: result.isAbnormal || false,
+						abnormalIndicator: result.abnormalIndicator || '',
+						confidence: result.confidence || 0,
+						context: result.context || '',
 						// resultType: result.resultType || 'numeric',
 					};
 				}),
