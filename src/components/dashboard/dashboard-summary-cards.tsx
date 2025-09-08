@@ -1,65 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, Text, Button, Flex, Box } from '@radix-ui/themes'
-import { dbOperations } from '@/lib/database'
+import { Card, Text, Button, Flex, Box, Grid } from '@radix-ui/themes'
 
 interface DashboardSummaryCardsProps {
   userId: string
   userEmail: string
+  patientCount?: number
 }
 
-interface SummaryStats {
-  totalPatients: number
-  pendingReviews: number
-  highPriorityPatients: number
-  processedToday: number
-}
-
-export function DashboardSummaryCards({ userId, userEmail }: DashboardSummaryCardsProps) {
-  const [stats, setStats] = useState<SummaryStats | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadDashboardStats()
-  }, [userId, userEmail])
-
-  const loadDashboardStats = async () => {
-    try {
-      setLoading(true)
-      
-      const { patients, summary } = await dbOperations.getDashboardData(userId, userEmail)
-      setStats(summary)
-    } catch (err) {
-      console.error('Error loading dashboard stats:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading || !stats) {
-    return (
-      <Flex gap="2" style={{ width: '100%' }}>
-        {[1, 2, 3].map((i) => (
-          <Card key={i} style={{ flex: 1, minHeight: '120px', backgroundColor: 'white' }}>
-            <Box style={{ padding: '16px' }}>
-              <Text size="2" color="gray">Cargando...</Text>
-            </Box>
-          </Card>
-        ))}
-      </Flex>
-    )
-  }
-
+export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: DashboardSummaryCardsProps) {
   return (
-    <Flex gap="2" style={{ width: '100%' }}>
+    <Grid columns="1fr 1fr 2fr" gap="2" width="100%">
       {/* Lista de Espera Card */}
-      <Card style={{ 
-        flex: 1, 
-        backgroundColor: 'white', 
-        borderRadius: '9px',
-        border: 'none',
-        boxShadow: 'var(--shadow-2)'
+      <Card style={{
+        borderRadius: '1rem'
       }}>
         <Box style={{ padding: '16px' }}>
           <Box style={{ padding: '8px' }}>
@@ -78,24 +32,20 @@ export function DashboardSummaryCards({ userId, userEmail }: DashboardSummaryCar
             <Text 
               size="2" 
               style={{ 
-                color: 'var(--blue-11)',
+                color: 'var(--labsense-blue)',
                 fontFamily: 'Lexend Deca, sans-serif',
                 fontWeight: '300'
               }}
             >
-              {stats.pendingReviews} Pacientes
+              {patientCount} Pacientes
             </Text>
           </Box>
         </Box>
       </Card>
 
       {/* Download Labs Card */}
-      <Card style={{ 
-        flex: 1, 
-        backgroundColor: 'white', 
-        borderRadius: '9px',
-        border: 'none',
-        boxShadow: 'var(--shadow-2)'
+      <Card style={{
+        borderRadius: '1rem'
       }}>
         <Box style={{ padding: '16px' }}>
           <Box style={{ padding: '8px' }}>
@@ -114,34 +64,45 @@ export function DashboardSummaryCards({ userId, userEmail }: DashboardSummaryCar
             <Button 
               variant="outline" 
               style={{
-                border: '1px solid var(--blue-9)',
-                color: 'var(--blue-11)',
+                border: '1px solid var(--labsense-blue) !important',
+                color: 'var(--labsense-blue)',
                 backgroundColor: 'transparent',
                 borderRadius: '8px',
                 height: '38px',
                 fontSize: '14px',
                 fontWeight: '600',
-                fontFamily: 'Lexend Deca, sans-serif'
+                fontFamily: 'Lexend Deca, sans-serif',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--labsense-blue-lighter)'
+                e.currentTarget.style.borderColor = 'var(--labsense-blue-dark)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.borderColor = 'var(--labsense-blue)'
+              }}
+              asChild
             >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                  cloud_download
-                </span>
-                Download PDFs set
-              </Flex>
+              <a href="/sample-labs.pdf" download>
+                <Flex align="center" gap="1">
+                  <img 
+                    src="/assets/icons/lucide/cloud-download.svg" 
+                    alt="Download" 
+                    style={{ width: '20px', height: '20px' }}
+                  />
+                  Download PDFs set
+                </Flex>
+              </a>
             </Button>
           </Box>
         </Box>
       </Card>
 
       {/* Procesar Resultados Card */}
-      <Card style={{ 
-        backgroundColor: 'white', 
-        borderRadius: '9px',
-        border: 'none',
-        boxShadow: 'var(--shadow-2)',
-        minWidth: '400px'
+      <Card style={{
+        borderRadius: '1rem'
       }}>
         <Box style={{ padding: '16px' }}>
           <Flex gap="2" align="center">
@@ -172,23 +133,39 @@ export function DashboardSummaryCards({ userId, userEmail }: DashboardSummaryCar
             </Box>
             <Button 
               style={{
-                backgroundColor: 'var(--purple-3)',
-                color: 'var(--blue-11)',
+                backgroundColor: 'var(--labsense-purple)',
+                color: 'var(--labsense-blue)',
                 border: 'none',
                 borderRadius: '8px',
                 height: '38px',
                 fontSize: '14px',
                 fontWeight: '600',
                 fontFamily: 'Lexend Deca, sans-serif',
-                padding: '0 24px'
+                padding: '0 24px',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--labsense-purple-lighter)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--labsense-purple)'
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--labsense-purple-lighter)'
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--labsense-purple)'
               }}
               asChild
             >
               <a href="/upload">
                 <Flex align="center" gap="1">
-                  <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>
-                    file_upload
-                  </span>
+                  <img 
+                    src="/assets/icons/lucide/file-up.svg" 
+                    alt="Upload" 
+                    style={{ width: '20px', height: '20px' }}
+                  />
                   Cargar PDF Resultados
                 </Flex>
               </a>
@@ -196,6 +173,6 @@ export function DashboardSummaryCards({ userId, userEmail }: DashboardSummaryCar
           </Flex>
         </Box>
       </Card>
-    </Flex>
+    </Grid>
   )
 }

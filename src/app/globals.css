@@ -1,5 +1,67 @@
 /* Healthcare-specific custom styles for Radix UI Themes */
 
+/* Custom color variables */
+:root {
+  --labsense-blue: #1283FF;
+  --labsense-blue-light: #3D9AFF;
+  --labsense-blue-lighter: #E6F3FF;
+  --labsense-blue-dark: #0F6FE6;
+  --labsense-blue-darker: #0A5CC7;
+  
+  --labsense-purple: #FFC5FE;
+  --labsense-purple-light: #FFDAFF;
+  --labsense-purple-lighter: #FFF0FF;
+  --labsense-purple-dark: #E6B0E5;
+  --labsense-purple-darker: #CC9BCC;
+}
+
+/* Reset default body margin */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Button overrides - remove all Radix green borders */
+.rt-Button,
+button[class*="Button"],
+[data-radix-collection-item],
+button[data-variant="ghost"],
+button[data-variant="outline"],
+button[data-variant="soft"],
+button[data-variant="solid"],
+button {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ghost button specific overrides */
+.rt-Button[data-variant="ghost"],
+button[data-variant="ghost"] {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Outline button overrides */
+.rt-Button[data-variant="outline"],
+button[data-variant="outline"] {
+  box-shadow: none !important;
+}
+
+/* Remove default focus rings and use custom */
+.rt-Button:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--labsense-blue) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+
+/* Radix Card overrides - use theme variables */
+.rt-Card {
+  --card-border-width: 0px;
+  padding: 0;
+}
+
 /* Chilean RUT input styling */
 .rut-input {
   font-family: var(--code-font-family);

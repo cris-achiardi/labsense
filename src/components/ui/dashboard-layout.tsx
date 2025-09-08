@@ -12,7 +12,7 @@ export function DashboardLayout({ children, style }: DashboardLayoutProps) {
   return (
     <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)', ...style }}>
       <DashboardTopbar />
-      <Box style={{ padding: 'var(--space-4)' }}>
+      <Box style={{ padding: '1rem', width: '100%' }}>
         {children}
       </Box>
     </Box>

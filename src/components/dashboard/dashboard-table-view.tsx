@@ -12,13 +12,15 @@ interface DashboardTableViewProps {
   onPatientClick?: (patientId: string) => void
   filters?: PatientFilters
   viewMode?: 'table' | 'cards'
+  onPatientCountChange?: (count: number) => void
 }
 
 export function DashboardTableView({ 
   limit = 10, 
   onPatientClick,
   filters,
-  viewMode = 'table'
+  viewMode = 'table',
+  onPatientCountChange
 }: DashboardTableViewProps) {
   const { data: session } = useSession()
   const [patients, setPatients] = useState<PrioritizedPatient[]>([])
@@ -36,6 +38,7 @@ export function DashboardTableView({
       
       const prioritizedPatients = await db.getPrioritizedPatients(limit, 0, filters)
       setPatients(prioritizedPatients)
+      onPatientCountChange?.(prioritizedPatients.length)
     } catch (err) {
       console.error('Error loading patients:', err)
       setError('Error cargando pacientes. Por favor, intenta nuevamente.')
@@ -217,13 +220,12 @@ export function DashboardTableView({
   return (
     <Box style={{ width: '100%' }}>
       <Card style={{ 
-        borderRadius: '8px',
         border: '1px solid var(--gray-6)',
         overflow: 'hidden'
       }}>
         {/* Table Header Card */}
         <Box style={{
-          backgroundColor: 'var(--gray-1)',
+          backgroundColor: 'var(--color-panel)',
           borderBottom: '1px solid var(--gray-6)',
           padding: '0'
         }}>
@@ -295,7 +297,7 @@ export function DashboardTableView({
               key={patient.id}
               style={{
                 borderBottom: index < patients.length - 1 ? '1px solid var(--gray-6)' : 'none',
-                backgroundColor: 'white'
+                backgroundColor: 'var(--color-panel)'
               }}
             >
               <Flex align="center" style={{ minHeight: '40px' }}>

@@ -1,18 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  Card,
-  Heading,
-  Text,
-  Button,
-  TextField,
-  Select,
-  Flex,
-  Box,
-  Badge,
-  IconButton
-} from '@radix-ui/themes'
+import { TextField, Select, Flex, Box, Text } from '@radix-ui/themes'
 import { PatientFilters } from '@/types/database'
 
 interface PatientSearchFiltersProps {
@@ -30,22 +19,7 @@ export function PatientSearchFilters({
 }: PatientSearchFiltersProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [priorityLevel, setPriorityLevel] = useState<'HIGH' | 'MEDIUM' | 'LOW' | 'all'>('all')
-  const [contactStatus, setContactStatus] = useState<'pending' | 'contacted' | 'processed' | 'all'>('all')
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' })
-  const [markerTypes, setMarkerTypes] = useState<string[]>([])
-  const [showAdvanced, setShowAdvanced] = useState(false)
-
-  // Available health marker types for filtering
-  const availableMarkerTypes = [
-    'GLICEMIA EN AYUNO',
-    'GLUCOSA',
-    'HEMOGLOBINA GLICADA A1C',
-    'COLESTEROL TOTAL',
-    'TRIGLICERIDOS',
-    'ALT',
-    'AST',
-    'TSH'
-  ]
 
   // Apply filters when any filter value changes
   useEffect(() => {
@@ -59,10 +33,6 @@ export function PatientSearchFilters({
       filters.priorityLevel = priorityLevel
     }
 
-    if (contactStatus !== 'all') {
-      filters.contactStatus = contactStatus
-    }
-
     if (dateRange.start && dateRange.end) {
       filters.dateRange = {
         start: new Date(dateRange.start),
@@ -70,317 +40,195 @@ export function PatientSearchFilters({
       }
     }
 
-    if (markerTypes.length > 0) {
-      filters.markerTypes = markerTypes
-    }
-
     onFiltersChange(filters)
-  }, [searchQuery, priorityLevel, contactStatus, dateRange, markerTypes, onFiltersChange])
-
-  const handleClearFilters = () => {
-    setSearchQuery('')
-    setPriorityLevel('all')
-    setContactStatus('all')
-    setDateRange({ start: '', end: '' })
-    setMarkerTypes([])
-    setShowAdvanced(false)
-    onClearFilters()
-  }
-
-  const toggleMarkerType = (markerType: string) => {
-    setMarkerTypes(prev =>
-      prev.includes(markerType)
-        ? prev.filter(type => type !== markerType)
-        : [...prev, markerType]
-    )
-  }
-
-  const hasActiveFilters = searchQuery ||
-    priorityLevel !== 'all' ||
-    contactStatus !== 'all' ||
-    dateRange.start || dateRange.end || markerTypes.length > 0
+  }, [searchQuery, priorityLevel, dateRange, onFiltersChange])
 
   return (
-    <Card>
-      <Flex direction="column" gap="4">
-        {/* Header */}
-        <Flex justify="between" align="center">
-          <Box>
-            <Heading size="4">Buscar y Filtrar Pacientes</Heading>
-            {resultCount !== undefined && (
-              <Text size="2" style={{ color: 'var(--gray-11)' }}>
-                {resultCount} paciente{resultCount !== 1 ? 's' : ''} encontrado{resultCount !== 1 ? 's' : ''}
-              </Text>
-            )}
-          </Box>
+    <Flex gap="4" align="center" style={{ width: '100%' }}>
+      {/* Search Field */}
+      <Box style={{ flex: 1 }}>
+        <Text 
+          size="2" 
+          weight="medium" 
+          style={{ 
+            color: '#363d3a',
+            fontFamily: 'Lexend Deca, sans-serif',
+            display: 'block',
+            marginBottom: '8px'
+          }}
+        >
+          Búsqueda por Paciente o Folio
+        </Text>
+        <TextField.Root
+          placeholder="Ingresa nombre, Rut o folio del exámen"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          disabled={loading}
+          style={{
+            backgroundColor: 'white',
+            border: '1px solid #dcdbdd',
+            borderRadius: '6px',
+            padding: '6px',
+            fontFamily: 'Lexend Deca, sans-serif',
+            fontWeight: '300',
+            fontSize: '14px',
+            width: '100%'
+          }}
+        />
+      </Box>
 
+      {/* Priority Select */}
+      <Box style={{ minWidth: '191px' }}>
+        <Text 
+          size="2" 
+          weight="medium" 
+          style={{ 
+            color: '#363d3a',
+            fontFamily: 'Lexend Deca, sans-serif',
+            display: 'block',
+            marginBottom: '8px'
+          }}
+        >
+          Prioridad
+        </Text>
+        <Select.Root
+          value={priorityLevel}
+          onValueChange={(value) => setPriorityLevel(value as any)}
+          disabled={loading}
+        >
+          <Select.Trigger 
+            placeholder="Seleccionar prioridad"
+            style={{
+              backgroundColor: 'white',
+              border: '1px solid #dcdbdd',
+              borderRadius: '6px',
+              padding: '6px',
+              fontFamily: 'Lexend Deca, sans-serif',
+              fontWeight: '300',
+              fontSize: '14px',
+              width: '191px',
+              color: 'rgba(25,33,30,0.5)'
+            }}
+          />
+          <Select.Content>
+            <Select.Item value="all">Todas las prioridades</Select.Item>
+            <Select.Item value="HIGH">Alta</Select.Item>
+            <Select.Item value="MEDIUM">Media</Select.Item>
+            <Select.Item value="LOW">Baja</Select.Item>
+          </Select.Content>
+        </Select.Root>
+      </Box>
+
+      {/* Date Range */}
+      <Box>
+        <Text 
+          size="2" 
+          weight="medium" 
+          style={{ 
+            color: '#363d3a',
+            fontFamily: 'Lexend Deca, sans-serif',
+            display: 'block',
+            marginBottom: '8px'
+          }}
+        >
+          Exámenes por Rango de Fecha
+        </Text>
+        <Flex gap="2" align="center">
           <Flex gap="2" align="center">
-            {hasActiveFilters && (
-              <Badge color="mint" variant="soft">
-                {[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
-                  .filter(Boolean).length} filtro{[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
-                    .filter(Boolean).length !== 1 ? 's' : ''} activo{[searchQuery, priorityLevel, contactStatus, dateRange.start, markerTypes.length > 0]
-                      .filter(Boolean).length !== 1 ? 's' : ''}
-              </Badge>
-            )}
-
-            <Button
-              variant="outline"
-              size="2"
-              onClick={() => setShowAdvanced(!showAdvanced)}
+            <Text 
+              size="2" 
+              style={{ 
+                color: '#363d3a',
+                fontFamily: 'Lexend Deca, sans-serif',
+                fontWeight: '300',
+                fontSize: '14px'
+              }}
             >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  {showAdvanced ? 'expand_less' : 'expand_more'}
-                </span>
-                {showAdvanced ? 'Menos filtros' : 'Más filtros'}
-              </Flex>
-            </Button>
+              desde
+            </Text>
+            <Box style={{ position: 'relative' }}>
+              <TextField.Root
+                type="date"
+                placeholder="Fecha de inicio"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                disabled={loading}
+                style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #dcdbdd',
+                  borderRadius: '6px',
+                  padding: '6px',
+                  fontFamily: 'Lexend Deca, sans-serif',
+                  fontWeight: '300',
+                  fontSize: '14px',
+                  width: '191px',
+                  color: 'rgba(25,33,30,0.5)'
+                }}
+              />
+              <img 
+                src="/assets/icons/lucide/calendar.svg" 
+                alt="Calendar" 
+                style={{ 
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '14px',
+                  height: '14px',
+                  pointerEvents: 'none'
+                }}
+              />
+            </Box>
+          </Flex>
+          
+          <Flex gap="2" align="center">
+            <Text 
+              size="2" 
+              style={{ 
+                color: '#363d3a',
+                fontFamily: 'Lexend Deca, sans-serif',
+                fontWeight: '300',
+                fontSize: '14px'
+              }}
+            >
+              a
+            </Text>
+            <Box style={{ position: 'relative' }}>
+              <TextField.Root
+                type="date"
+                placeholder="Fecha de termino"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                disabled={loading}
+                style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #dcdbdd',
+                  borderRadius: '6px',
+                  padding: '6px',
+                  fontFamily: 'Lexend Deca, sans-serif',
+                  fontWeight: '300',
+                  fontSize: '14px',
+                  width: '191px',
+                  color: 'rgba(25,33,30,0.5)'
+                }}
+              />
+              <img 
+                src="/assets/icons/lucide/calendar.svg" 
+                alt="Calendar" 
+                style={{ 
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '14px',
+                  height: '14px',
+                  pointerEvents: 'none'
+                }}
+              />
+            </Box>
           </Flex>
         </Flex>
-
-        {/* Basic Search */}
-        <Flex gap="3" align="end" wrap="wrap">
-          <Box style={{ flex: 1, minWidth: '200px' }}>
-            <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-              Buscar por nombre o RUT
-            </Text>
-            <TextField.Root
-              placeholder="Ej: Juan Pérez o 12.345.678-9"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={loading}
-            >
-              <TextField.Slot>
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  search
-                </span>
-              </TextField.Slot>
-              {searchQuery && (
-                <TextField.Slot>
-                  <IconButton
-                    size="1"
-                    variant="ghost"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                      close
-                    </span>
-                  </IconButton>
-                </TextField.Slot>
-              )}
-            </TextField.Root>
-          </Box>
-
-          <Box style={{ minWidth: '140px' }}>
-            <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-              Prioridad
-            </Text>
-            <Select.Root
-              value={priorityLevel}
-              onValueChange={(value) => setPriorityLevel(value as any)}
-              disabled={loading}
-            >
-              <Select.Trigger placeholder="Todas" />
-              <Select.Content>
-                <Select.Item value="all">Todas las prioridades</Select.Item>
-                <Select.Item value="HIGH">
-                  <Flex align="center" gap="2">
-                    <Badge color="red" variant="solid" size="1">ALTA</Badge>
-                    Alta Prioridad
-                  </Flex>
-                </Select.Item>
-                <Select.Item value="MEDIUM">
-                  <Flex align="center" gap="2">
-                    <Badge color="orange" variant="solid" size="1">MEDIA</Badge>
-                    Prioridad Media
-                  </Flex>
-                </Select.Item>
-                <Select.Item value="LOW">
-                  <Flex align="center" gap="2">
-                    <Badge color="green" variant="solid" size="1">BAJA</Badge>
-                    Prioridad Baja
-                  </Flex>
-                </Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Box>
-
-          <Box style={{ minWidth: '140px' }}>
-            <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-              Estado
-            </Text>
-            <Select.Root
-              value={contactStatus}
-              onValueChange={(value) => setContactStatus(value as any)}
-              disabled={loading}
-            >
-              <Select.Trigger placeholder="Todos" />
-              <Select.Content>
-                <Select.Item value="all">Todos los estados</Select.Item>
-                <Select.Item value="pending">
-                  <Flex align="center" gap="2">
-                    <Badge color="yellow" variant="soft" size="1">PENDIENTE</Badge>
-                    Pendiente
-                  </Flex>
-                </Select.Item>
-                <Select.Item value="contacted">
-                  <Flex align="center" gap="2">
-                    <Badge color="blue" variant="soft" size="1">CONTACTADO</Badge>
-                    Contactado
-                  </Flex>
-                </Select.Item>
-                <Select.Item value="processed">
-                  <Flex align="center" gap="2">
-                    <Badge color="green" variant="soft" size="1">PROCESADO</Badge>
-                    Procesado
-                  </Flex>
-                </Select.Item>
-              </Select.Content>
-            </Select.Root>
-          </Box>
-
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              color="gray"
-              onClick={handleClearFilters}
-              disabled={loading}
-            >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  clear_all
-                </span>
-                Limpiar
-              </Flex>
-            </Button>
-          )}
-        </Flex>
-
-        {/* Advanced Filters */}
-        {showAdvanced && (
-          <Box style={{
-            borderTop: '1px solid var(--gray-6)',
-            paddingTop: 'var(--space-4)',
-            marginTop: 'var(--space-2)'
-          }}>
-            <Flex direction="column" gap="4">
-              {/* Date Range */}
-              <Box>
-                <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-                  Rango de fechas de examen
-                </Text>
-                <Flex gap="3" align="center">
-                  <Box style={{ flex: 1 }}>
-                    <TextField.Root
-                      type="date"
-                      value={dateRange.start}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                      disabled={loading}
-                    />
-                  </Box>
-                  <Text size="2" style={{ color: 'var(--gray-11)' }}>hasta</Text>
-                  <Box style={{ flex: 1 }}>
-                    <TextField.Root
-                      type="date"
-                      value={dateRange.end}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                      disabled={loading}
-                    />
-                  </Box>
-                </Flex>
-              </Box>
-
-              {/* Health Marker Types */}
-              <Box>
-                <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-                  Marcadores de salud anormales
-                </Text>
-                <Flex gap="2" wrap="wrap">
-                  {availableMarkerTypes.map((markerType) => (
-                    <Button
-                      key={markerType}
-                      variant={markerTypes.includes(markerType) ? 'solid' : 'outline'}
-                      color={markerTypes.includes(markerType) ? 'mint' : 'gray'}
-                      size="1"
-                      onClick={() => toggleMarkerType(markerType)}
-                      disabled={loading}
-                    >
-                      {markerType}
-                    </Button>
-                  ))}
-                </Flex>
-                {markerTypes.length > 0 && (
-                  <Text size="1" style={{ color: 'var(--gray-11)', marginTop: 'var(--space-2)' }}>
-                    Mostrando pacientes con valores anormales en: {markerTypes.join(', ')}
-                  </Text>
-                )}
-              </Box>
-            </Flex>
-          </Box>
-        )}
-
-        {/* Quick Filter Buttons */}
-        <Box>
-          <Text size="2" weight="medium" style={{ marginBottom: 'var(--space-2)' }}>
-            Filtros rápidos
-          </Text>
-          <Flex gap="2" wrap="wrap">
-            <Button
-              variant="outline"
-              size="2"
-              onClick={() => {
-                setPriorityLevel('HIGH')
-                setContactStatus('pending')
-              }}
-              disabled={loading}
-            >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  priority_high
-                </span>
-                Urgentes Pendientes
-              </Flex>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="2"
-              onClick={() => {
-                setContactStatus('pending')
-                setDateRange({
-                  start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  end: new Date().toISOString().split('T')[0]
-                })
-              }}
-              disabled={loading}
-            >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  schedule
-                </span>
-                Última Semana
-              </Flex>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="2"
-              onClick={() => {
-                setMarkerTypes(['GLICEMIA EN AYUNO', 'HEMOGLOBINA GLICADA A1C'])
-              }}
-              disabled={loading}
-            >
-              <Flex align="center" gap="1">
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                  medical_services
-                </span>
-                Diabetes
-              </Flex>
-            </Button>
-          </Flex>
-        </Box>
-      </Flex>
-    </Card>
+      </Box>
+    </Flex>
   )
 }

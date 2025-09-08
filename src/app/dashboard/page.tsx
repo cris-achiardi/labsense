@@ -14,6 +14,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [filters, setFilters] = useState<PatientFilters>({})
+  const [patientCount, setPatientCount] = useState(0)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,21 +39,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout style={{ backgroundColor: '#efefef' }}>
-      <Container size="4" style={{ padding: '16px' }}>
-        <Flex direction="column" gap="6">
+    <DashboardLayout style={{ backgroundColor: '#EFEFEF' }}>
+      <Box style={{ width: '100%' }}>
+        <Flex direction="column" gap="2">
           {/* Dashboard Summary Cards - Figma Style */}
           <DashboardSummaryCards 
             userId={session.user.id} 
             userEmail={session.user.email || ''} 
+            patientCount={patientCount}
           />
 
           {/* Dashboard Table with Filters */}
-          <Card style={{ 
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px'
-          }}>
+          <Card style={{ backgroundColor: 'var(--color-panel)', padding: '1rem' }}>
             <Flex direction="column" gap="6">
               {/* Search and Filters */}
               <PatientSearchFilters
@@ -67,11 +65,12 @@ export default function DashboardPage() {
                 onPatientClick={(patientId: string) => {
                   router.push(`/patients/${patientId}`)
                 }}
+                onPatientCountChange={setPatientCount}
               />
             </Flex>
           </Card>
         </Flex>
-      </Container>
+      </Box>
     </DashboardLayout>
   )
 }

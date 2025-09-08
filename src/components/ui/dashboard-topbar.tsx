@@ -21,9 +21,11 @@ export function DashboardTopbar() {
       <Flex justify="between" align="center">
         {/* Logo */}
         <Box>
-          <Text size="6" weight="bold" style={{ color: 'var(--mint-11)' }}>
-            LabSense
-          </Text>
+          <img 
+            src="/assets/labsense-logo.svg" 
+            alt="LabSense" 
+            style={{ height: '40px', width: 'auto' }}
+          />
         </Box>
 
         {/* User Info */}
@@ -53,7 +55,11 @@ export function DashboardTopbar() {
                 variant="ghost"
                 size="2"
                 onClick={handleLogout}
-                style={{ color: 'var(--gray-11)' }}
+                style={{ 
+                  color: 'var(--gray-11)',
+                  border: 'none',
+                  backgroundColor: 'transparent'
+                }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
                   logout
