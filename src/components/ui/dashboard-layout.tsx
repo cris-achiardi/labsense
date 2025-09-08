@@ -5,11 +5,12 @@ import { DashboardTopbar } from './dashboard-topbar'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
+  style?: React.CSSProperties
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({ children, style }: DashboardLayoutProps) {
   return (
-    <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)' }}>
+    <Box style={{ minHeight: '100vh', backgroundColor: 'var(--gray-2)', ...style }}>
       <DashboardTopbar />
       <Box style={{ padding: 'var(--space-4)' }}>
         {children}
