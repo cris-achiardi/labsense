@@ -5,6 +5,8 @@
 
 import { type HealthMarkerMapping } from '../spanish-health-markers';
 
+export type { HealthMarkerMapping };
+
 export interface ComprehensiveLabResult {
 	examen: string;
 	resultado: string | number | null;

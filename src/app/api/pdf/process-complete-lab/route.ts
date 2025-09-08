@@ -160,11 +160,22 @@ export async function POST(request: NextRequest) {
 			const pdfData = await pdfParse(pdfBuffer);
 			const comprehensiveResults = extractAllLabResults(pdfData.text);
 			
+			// Convert ComprehensiveLabResult[] to LabResult[] by filtering/converting null values
+			const convertedResults = comprehensiveResults
+				.filter(r => r.resultado !== null) // Filter out null results
+				.map(r => ({
+					...r,
+					resultado: r.resultado as string | number, // Type assertion since we filtered nulls
+					unidad: r.unidad || '', // Convert null to empty string
+					valorReferencia: r.valorReferencia || '', // Convert null to empty string
+					metodo: r.metodo || '' // Convert null to empty string
+				}));
+			
 			// Replace lab results with comprehensive extraction
-			extractionResult.labResults = comprehensiveResults;
-			extractionResult.metadata.totalResults = comprehensiveResults.length;
-			extractionResult.metadata.abnormalCount = comprehensiveResults.filter(r => r.isAbnormal).length;
-			extractionResult.metadata.criticalCount = comprehensiveResults.filter(r => r.priority === 'critical').length;
+			extractionResult.labResults = convertedResults;
+			extractionResult.metadata.totalResults = convertedResults.length;
+			extractionResult.metadata.abnormalCount = convertedResults.filter(r => r.isAbnormal).length;
+			extractionResult.metadata.criticalCount = convertedResults.filter(r => r.priority === 'critical').length;
 		}
 
 		if (!extractionResult.success) {

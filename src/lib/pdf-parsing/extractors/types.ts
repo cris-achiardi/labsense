@@ -3,7 +3,9 @@
  * Centralized type definitions following DRY principles
  */
 
-// Re-export existing types for backward compatibility
+import type { ComprehensiveLabResult } from './global-fallback';
+
+// Re-export for backward compatibility
 export type { ComprehensiveLabResult } from './global-fallback';
 
 /**

@@ -102,6 +102,16 @@ export function DashboardTableView({
     })
   }
 
+  const formatAge = (ageAtTest: number | undefined) => {
+    if (!ageAtTest) return 'N/A'
+    
+    const years = Math.floor(ageAtTest)
+    const months = Math.floor((ageAtTest - years) * 12)
+    const days = Math.floor(((ageAtTest - years) * 12 - months) * 30.44)
+    
+    return `${years}a ${months}m ${days}d`
+  }
+
   if (loading) {
     return (
       <Container size="4">
@@ -319,7 +329,7 @@ export function DashboardTableView({
                 {/* Age */}
                 <Box style={{ width: '94px', padding: '8px' }}>
                   <Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
-                    {patient.age || 'N/A'}
+                    {formatAge(patient.age_at_test)}
                   </Text>
                 </Box>
 
@@ -408,7 +418,6 @@ export function DashboardTableView({
                         patientRut={patient.rut}
                         labReportId={patient.lab_report_id}
                         patientName={patient.name}
-                        variant="icon"
                       />
                     </Box>
                   )}
