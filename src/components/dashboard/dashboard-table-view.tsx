@@ -230,32 +230,32 @@ export function DashboardTableView({
           padding: '0'
         }}>
           <Flex align="center" style={{ minHeight: '40px' }}>
-            <Box style={{ width: '365px', padding: '8px' }}>
+            <Box style={{ flex: 1, padding: '8px', minWidth: '200px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Nombre del Paciente (ID)
               </Text>
             </Box>
-            <Box style={{ width: '100px', padding: '8px' }}>
+            <Box style={{ width: '120px', padding: '8px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 RUT
               </Text>
             </Box>
-            <Box style={{ width: '94px', padding: '8px' }}>
+            <Box style={{ width: '80px', padding: '8px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Edad
               </Text>
             </Box>
-            <Box style={{ width: '83px', padding: '8px' }}>
+            <Box style={{ width: '70px', padding: '8px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Sexo
               </Text>
             </Box>
-            <Box style={{ width: '78px', padding: '8px' }}>
+            <Box style={{ width: '100px', padding: '8px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Prioridad
               </Text>
             </Box>
-            <Box style={{ width: '115px', padding: '8px' }}>
+            <Box style={{ width: '130px', padding: '8px' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Fecha Examen
               </Text>
@@ -265,22 +265,22 @@ export function DashboardTableView({
                 Folio
               </Text>
             </Box>
-            <Box style={{ width: '89px', padding: '8px' }}>
+            <Box style={{ width: '90px', padding: '8px', textAlign: 'center' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Exámenes
               </Text>
             </Box>
-            <Box style={{ width: '84px', padding: '8px' }}>
+            <Box style={{ width: '80px', padding: '8px', textAlign: 'center' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Anormal
               </Text>
             </Box>
-            <Box style={{ width: '88px', padding: '8px' }}>
+            <Box style={{ width: '100px', padding: '8px', textAlign: 'center' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Pje. Riesgo
               </Text>
             </Box>
-            <Box style={{ flex: 1, padding: '8px' }}>
+            <Box style={{ width: '60px', padding: '8px', textAlign: 'center' }}>
               <Text size="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 PDF
               </Text>
@@ -302,7 +302,7 @@ export function DashboardTableView({
             >
               <Flex align="center" style={{ minHeight: '40px' }}>
                 {/* Patient Name and ID */}
-                <Box style={{ width: '365px', padding: '8px' }}>
+                <Box style={{ flex: 1, padding: '8px', minWidth: '200px' }}>
                   <Flex align="center" gap="2">
                     <Text 
                       size="2"
@@ -322,28 +322,28 @@ export function DashboardTableView({
                 </Box>
 
                 {/* RUT */}
-                <Box style={{ width: '100px', padding: '8px' }}>
+                <Box style={{ width: '120px', padding: '8px' }}>
                   <Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
                     {anonymizeRut(patient.rut)}
                   </Text>
                 </Box>
 
                 {/* Age */}
-                <Box style={{ width: '94px', padding: '8px' }}>
+                <Box style={{ width: '80px', padding: '8px' }}>
                   <Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
                     {formatAge(patient.age_at_test)}
                   </Text>
                 </Box>
 
                 {/* Gender */}
-                <Box style={{ width: '83px', padding: '8px' }}>
+                <Box style={{ width: '70px', padding: '8px' }}>
                   <Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
                     {patient.gender === 'M' ? 'masculino' : patient.gender === 'F' ? 'femenino' : 'N/A'}
                   </Text>
                 </Box>
 
                 {/* Priority Badge */}
-                <Box style={{ width: '78px', padding: '8px' }}>
+                <Box style={{ width: '100px', padding: '8px' }}>
                   <Badge 
                     color={priorityBadge.color} 
                     variant={priorityBadge.variant}
@@ -355,7 +355,7 @@ export function DashboardTableView({
                 </Box>
 
                 {/* Test Date */}
-                <Box style={{ width: '115px', padding: '8px' }}>
+                <Box style={{ width: '130px', padding: '8px' }}>
                   <Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
                     {formatDate(patient.test_date)}
                   </Text>
@@ -369,14 +369,14 @@ export function DashboardTableView({
                 </Box>
 
                 {/* Total Tests Count */}
-                <Box style={{ width: '89px', padding: '8px', textAlign: 'center' }}>
+                <Box style={{ width: '90px', padding: '8px', textAlign: 'center' }}>
                   <Text size="1" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
                     {patient.total_tests_count || 0}
                   </Text>
                 </Box>
 
                 {/* Abnormal Count */}
-                <Box style={{ width: '84px', padding: '8px', textAlign: 'center' }}>
+                <Box style={{ width: '80px', padding: '8px', textAlign: 'center' }}>
                   <Text 
                     size="1" 
                     style={{ 
@@ -389,7 +389,7 @@ export function DashboardTableView({
                 </Box>
 
                 {/* Priority Score */}
-                <Box style={{ width: '88px', padding: '8px', textAlign: 'center' }}>
+                <Box style={{ width: '100px', padding: '8px', textAlign: 'center' }}>
                   <Text 
                     size="1" 
                     style={{ 
@@ -404,7 +404,7 @@ export function DashboardTableView({
                 </Box>
 
                 {/* PDF Button */}
-                <Box style={{ flex: 1, padding: '8px', textAlign: 'center', minWidth: '50px', minHeight: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box style={{ width: '60px', padding: '8px', textAlign: 'center', minHeight: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <PDFViewerButton
                     pdfUrl={patient.pdf_file_path || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'}
                     patientRut={patient.rut}
