@@ -404,25 +404,13 @@ export function DashboardTableView({
                 </Box>
 
                 {/* PDF Button */}
-                <Box style={{ flex: 1, padding: '8px', textAlign: 'center' }}>
-                  {patient.pdf_file_path && patient.lab_report_id && (
-                    <Box style={{
-                      backgroundColor: 'var(--purple-3)',
-                      borderRadius: '8px',
-                      width: '30px',
-                      height: '30px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <PDFViewerButton
-                        pdfUrl={patient.pdf_file_path}
-                        patientRut={patient.rut}
-                        labReportId={patient.lab_report_id}
-                        patientName={patient.name}
-                      />
-                    </Box>
-                  )}
+                <Box style={{ flex: 1, padding: '8px', textAlign: 'center', minWidth: '50px', minHeight: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <PDFViewerButton
+                    pdfUrl={patient.pdf_file_path || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'}
+                    patientRut={patient.rut}
+                    labReportId={patient.lab_report_id || 'test-report'}
+                    patientName={patient.name}
+                  />
                 </Box>
               </Flex>
             </Box>

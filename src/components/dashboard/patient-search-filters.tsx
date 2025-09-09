@@ -66,13 +66,15 @@ export function PatientSearchFilters({
           disabled={loading}
           style={{
             backgroundColor: 'white',
-            border: '1px solid #dcdbdd',
+            border: '1px solid #DCDBDD',
             borderRadius: '6px',
-            padding: '6px',
+            padding: '6px 12px',
             fontFamily: 'Lexend Deca, sans-serif',
             fontWeight: '300',
             fontSize: '14px',
-            width: '100%'
+            width: '100%',
+            height: '38px',
+            boxShadow: 'none'
           }}
         />
       </Box>
@@ -98,20 +100,10 @@ export function PatientSearchFilters({
         >
           <Select.Trigger 
             placeholder="Seleccionar prioridad"
-            style={{
-              backgroundColor: 'white',
-              border: '1px solid #dcdbdd',
-              borderRadius: '6px',
-              padding: '6px',
-              fontFamily: 'Lexend Deca, sans-serif',
-              fontWeight: '300',
-              fontSize: '14px',
-              width: '191px',
-              color: 'rgba(25,33,30,0.5)'
-            }}
+            style={{ width: '191px' }}
           />
           <Select.Content>
-            <Select.Item value="all">Todas las prioridades</Select.Item>
+            <Select.Item value="all">Seleccionar prioridad</Select.Item>
             <Select.Item value="HIGH">Alta</Select.Item>
             <Select.Item value="MEDIUM">Media</Select.Item>
             <Select.Item value="LOW">Baja</Select.Item>
@@ -146,39 +138,29 @@ export function PatientSearchFilters({
             >
               desde
             </Text>
-            <Box style={{ position: 'relative' }}>
-              <TextField.Root
-                type="date"
-                placeholder="Fecha de inicio"
-                value={dateRange.start}
-                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                disabled={loading}
-                style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #dcdbdd',
-                  borderRadius: '6px',
-                  padding: '6px',
-                  fontFamily: 'Lexend Deca, sans-serif',
-                  fontWeight: '300',
-                  fontSize: '14px',
-                  width: '191px',
-                  color: 'rgba(25,33,30,0.5)'
-                }}
-              />
-              <img 
-                src="/assets/icons/lucide/calendar.svg" 
-                alt="Calendar" 
-                style={{ 
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '14px',
-                  height: '14px',
-                  pointerEvents: 'none'
-                }}
-              />
-            </Box>
+            <TextField.Root
+              type="date"
+              placeholder="Fecha de inicio"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              disabled={loading}
+              style={{
+                backgroundColor: 'white',
+                border: '1px solid #DCDBDD',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontFamily: 'Lexend Deca, sans-serif',
+                fontWeight: '300',
+                fontSize: '14px',
+                width: '100%',
+                height: '38px',
+                color: 'rgba(25,33,30,0.5)',
+                boxShadow: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            />
           </Flex>
           
           <Flex gap="2" align="center">
@@ -193,39 +175,29 @@ export function PatientSearchFilters({
             >
               a
             </Text>
-            <Box style={{ position: 'relative' }}>
-              <TextField.Root
-                type="date"
-                placeholder="Fecha de termino"
-                value={dateRange.end}
-                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                disabled={loading}
-                style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #dcdbdd',
-                  borderRadius: '6px',
-                  padding: '6px',
-                  fontFamily: 'Lexend Deca, sans-serif',
-                  fontWeight: '300',
-                  fontSize: '14px',
-                  width: '191px',
-                  color: 'rgba(25,33,30,0.5)'
-                }}
-              />
-              <img 
-                src="/assets/icons/lucide/calendar.svg" 
-                alt="Calendar" 
-                style={{ 
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '14px',
-                  height: '14px',
-                  pointerEvents: 'none'
-                }}
-              />
-            </Box>
+            <TextField.Root
+              type="date"
+              placeholder="Fecha de termino"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              disabled={loading}
+              style={{
+                backgroundColor: 'white',
+                border: '1px solid #DCDBDD',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontFamily: 'Lexend Deca, sans-serif',
+                fontWeight: '300',
+                fontSize: '14px',
+                width: '100%',
+                height: '38px',
+                color: 'rgba(25,33,30,0.5)',
+                boxShadow: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            />
           </Flex>
         </Flex>
       </Box>

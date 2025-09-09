@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@radix-ui/themes'
-import { ExternalLinkIcon } from '@radix-ui/react-icons'
 import { useState } from 'react'
 
 interface PDFViewerButtonProps {
@@ -55,13 +54,28 @@ export function PDFViewerButton({
 
   return (
     <Button
-      variant="outline"
-      size="2"
+      variant="ghost"
+      size="1"
       onClick={handleViewPDF}
       disabled={isLoading || !pdfUrl}
+      style={{
+        backgroundColor: 'var(--labsense-purple)',
+        borderRadius: '8px',
+        width: '30px',
+        height: '30px',
+        padding: '0',
+        border: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer'
+      }}
     >
-      <ExternalLinkIcon />
-      {isLoading ? 'Abriendo...' : 'Ver PDF Original'}
+      <img 
+        src="/assets/icons/lucide/external-link.svg" 
+        alt="View PDF" 
+        style={{ width: '16px', height: '16px' }}
+      />
     </Button>
   )
 }
