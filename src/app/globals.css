@@ -13,12 +13,54 @@
   --labsense-purple-lighter: #FFF0FF;
   --labsense-purple-dark: #E6B0E5;
   --labsense-purple-darker: #CC9BCC;
+  
+  /* Base font color */
+  --labsense-text-primary: #363D3A;
+  
+  /* Override Radix UI default font family */
+  --default-font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI (Custom)', Roboto, 'Helvetica Neue', 'Open Sans (Custom)', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
-/* Reset default body margin */
+/* More specific override for Radix Theme - using higher specificity */
+html body .radix-themes,
+html body [data-radix-theme],
+html body {
+  --default-font-family: 'Lexend Deca', -apple-system, BlinkMacSystemFont, 'Segoe UI (Custom)', Roboto, 'Helvetica Neue', 'Open Sans (Custom)', system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  font-weight: 300;
+}
+
+/* Chip/Badge colors */
+:root {
+  --chip-success-bg: #DFF4B1;
+  --chip-success-text: #02542D;
+  --chip-warning-bg: #FFF1C2;
+  --chip-warning-text: #975102;
+  --chip-error-bg: #FDD3D0;
+  --chip-error-text: #C00F0C;
+  --chip-gray-bg: #F1F3F5;
+  --chip-gray-text: #687076;
+}
+
+/* Reset default body margin and apply base font color */
 body {
   margin: 0;
   padding: 0;
+  color: var(--labsense-text-primary);
+  font-family: 'Lexend Deca', sans-serif;
+  font-weight: 300;
+}
+
+/* Apply base font color to all text elements */
+* {
+  color: var(--labsense-text-primary);
+}
+
+/* Override Radix UI default text colors */
+.rt-Text,
+.rt-Heading,
+.rt-Button,
+p, h1, h2, h3, h4, h5, h6, span, div {
+  color: var(--labsense-text-primary);
 }
 
 /* Button overrides - remove all Radix green borders */
@@ -139,4 +181,37 @@ input[type="date"].rt-TextFieldInput {
   background-color: var(--green-2);
   border-color: var(--green-6);
   color: var(--green-11);
+}
+
+/* Custom chip/badge components */
+.chip-success {
+  background-color: var(--chip-success-bg) !important;
+  color: var(--chip-success-text) !important;
+  font-size: 12px !important;
+  font-weight: 300 !important;
+  border: none !important;
+}
+
+.chip-warning {
+  background-color: var(--chip-warning-bg) !important;
+  color: var(--chip-warning-text) !important;
+  font-size: 12px !important;
+  font-weight: 300 !important;
+  border: none !important;
+}
+
+.chip-error {
+  background-color: var(--chip-error-bg) !important;
+  color: var(--chip-error-text) !important;
+  font-size: 12px !important;
+  font-weight: 300 !important;
+  border: none !important;
+}
+
+.chip-gray {
+  background-color: var(--chip-gray-bg) !important;
+  color: var(--chip-gray-text) !important;
+  font-size: 12px !important;
+  font-weight: 300 !important;
+  border: none !important;
 }

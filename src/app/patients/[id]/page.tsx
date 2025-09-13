@@ -192,200 +192,250 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
   const abnormalResults = labResults.filter(result => result.is_abnormal)
   const normalResults = labResults.filter(result => !result.is_abnormal)
 
+  // Helper functions for hardcoded data
+  const getLabUnit = (markerType: string): string => {
+    const marker = markerType.toLowerCase()
+    if (marker.includes('glicemia') || marker.includes('glucosa')) return 'mg/dL'
+    if (marker.includes('bilirrubina')) return 'mg/dL'
+    if (marker.includes('got') || marker.includes('gpt') || marker.includes('ast') || marker.includes('alt')) return 'U/L'
+    if (marker.includes('fosfatasa')) return 'U/L'
+    if (marker.includes('ggt')) return 'U/L'
+    if (marker.includes('nitrogeno') || marker.includes('urea')) return 'mg/dL'
+    if (marker.includes('acido urico')) return 'mg/dL'
+    if (marker.includes('sodio') || marker.includes('potasio') || marker.includes('cloro')) return 'mEq/L'
+    if (marker.includes('creatinina')) return 'mg/dL'
+    if (marker.includes('colesterol') || marker.includes('trigliceridos')) return 'mg/dL'
+    if (marker.includes('hemoglobina') || marker.includes('hematocrito')) return 'g/dL'
+    if (marker.includes('tsh')) return 'μUI/mL'
+    return 'mg/dL' // default
+  }
+
+  const getNormalRange = (markerType: string): string => {
+    const marker = markerType.toLowerCase()
+    if (marker.includes('glicemia') || marker.includes('glucosa')) return '74 - 106'
+    if (marker.includes('bilirrubina directa')) return 'Menor a 0.50'
+    if (marker.includes('bilirrubina total')) return '0,3 - 1,2'
+    if (marker.includes('got') || marker.includes('ast')) return 'Hasta 34'
+    if (marker.includes('gpt') || marker.includes('alt')) return '10 - 49'
+    if (marker.includes('fosfatasa')) return '46 - 116'
+    if (marker.includes('ggt')) return 'Menor a 73'
+    if (marker.includes('nitrogeno') || marker.includes('urea')) return '9 - 23'
+    if (marker.includes('acido urico')) return '3,7 - 9,2'
+    if (marker.includes('sodio')) return '136 - 145'
+    if (marker.includes('potasio')) return '3,5 - 5,1'
+    if (marker.includes('cloro')) return '98 - 107'
+    if (marker.includes('tsh')) return '0,55 - 4,78'
+    if (marker.includes('colesterol total')) return '19,8 - 44'
+    if (marker.includes('trigliceridos')) return 'Hasta 150'
+    return 'Valor normal' // default
+  }
+
   return (
-    <DashboardLayout>
-      <Container size="4">
-        <Flex direction="column" gap="6">
-          {/* Header */}
-          <Flex justify="between" align="center">
-            <Box>
-              <Heading size="7" style={{ color: 'var(--gray-12)', marginBottom: 'var(--space-2)' }}>
-                Detalle del Paciente
-              </Heading>
-              <Text size="4" style={{ color: 'var(--gray-11)' }}>
-                Información completa y resultados de laboratorio
+    <DashboardLayout style={{ backgroundColor: '#EFEFEF' }}>
+      <Box style={{ width: '100%' }}>
+        <Flex direction="column" gap="2">
+          {/* Back Button - Outside main card */}
+          <Button 
+            variant="ghost" 
+            onClick={() => router.back()}
+            style={{
+              color: 'var(--labsense-blue)',
+              fontWeight: '700',
+              fontSize: '14px',
+              padding: '0.5rem 0',
+              justifyContent: 'flex-start',
+              alignSelf: 'flex-start',
+              marginLeft: '0',
+              width: 'fit-content'
+            }}
+          >
+            ← Back to Dashboard
+          </Button>
+
+          {/* Main Container Card */}
+          <Card style={{ 
+            backgroundColor: 'var(--color-panel)',
+            padding: '1rem'
+          }}>
+            {/* Section 1: Header (inside main card) */}
+            <Flex justify="between" align="center" style={{ marginBottom: 'var(--space-4)' }}>
+              <Text size="4" weight="bold" style={{ color: 'var(--labsense-text-primary)' }}>
+                Resultados Laboratorio
               </Text>
-            </Box>
-            <Flex gap="3">
-              <Button color="gray" variant="outline" onClick={() => router.back()}>
-                <Flex align="center" gap="2">
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                    arrow_back
-                  </span>
-                  Volver
-                </Flex>
-              </Button>
+              <Flex align="center" gap="2">
+                <Text size="3" style={{ color: 'var(--gray-11)', fontWeight: '300' }}>
+                  Folio
+                </Text>
+                <Text size="3" style={{ color: 'var(--labsense-text-primary)', fontWeight: '700' }}>
+                  345571
+                </Text>
+              </Flex>
             </Flex>
-          </Flex>
 
-          {/* Patient Info Card */}
-          <Card>
-            <Flex direction="column" gap="4">
+            {/* Section 2: Patient Info Card */}
+            <Card style={{ 
+              border: '1px solid var(--gray-6)',
+              backgroundColor: 'var(--color-panel)',
+              padding: '1rem',
+              marginBottom: 'var(--space-3)'
+            }}>
               <Flex justify="between" align="start">
-                <Box>
-                  <Heading size="6" style={{ marginBottom: 'var(--space-2)' }}>
-                    {patient.name}
-                  </Heading>
-                  <Text size="4" style={{ color: 'var(--gray-11)' }}>
-                    RUT: {patient.rut}
+                <Flex direction="column" gap="1">
+                  <Text size="3" weight="medium" style={{ color: 'var(--labsense-text-primary)' }}>
+                    D**** A****** B****** L******
                   </Text>
-                </Box>
-                <Flex gap="3">
-                  <Badge color={getPriorityColor(patient.priority_score)} size="2">
-                    {getPriorityLabel(patient.priority_score)} ({patient.priority_score})
-                  </Badge>
-                  <Badge color={getContactStatusColor(patient.contact_status)} size="2">
-                    {getContactStatusLabel(patient.contact_status)}
-                  </Badge>
+                  <Text size="2" style={{ color: 'var(--gray-11)' }}>
+                    RUT: *.***.***.* 
+                  </Text>
+                </Flex>
+                <Flex direction="column" align="end" gap="1">
+                  <Text size="2" style={{ color: 'var(--gray-11)' }}>Edad: 61a 7m 4d</Text>
+                  <Text size="2" style={{ color: 'var(--gray-11)' }}>Sexo: masculino</Text>
                 </Flex>
               </Flex>
+            </Card>
 
-              <Separator />
-
-              <Flex gap="6" wrap="wrap">
-                {patient.age && (
-                  <Box>
-                    <Text size="2" style={{ color: 'var(--gray-11)' }}>Edad</Text>
-                    <Text size="3" weight="medium">{patient.age}</Text>
-                  </Box>
-                )}
-                {patient.gender && (
-                  <Box>
-                    <Text size="2" style={{ color: 'var(--gray-11)' }}>Género</Text>
-                    <Text size="3" weight="medium">{patient.gender}</Text>
-                  </Box>
-                )}
-                <Box>
-                  <Text size="2" style={{ color: 'var(--gray-11)' }}>Total Exámenes</Text>
-                  <Text size="3" weight="medium">{labResults.length}</Text>
+            {/* Section 3: Lab Test Info Card */}
+            <Card style={{ 
+              border: '1px solid var(--gray-6)',
+              backgroundColor: 'var(--color-panel)',
+              padding: '1rem',
+              marginBottom: 'var(--space-3)'
+            }}>
+              <Flex justify="between" align="start">
+                <Box style={{ flex: '1' }}>
+                  <Flex direction="column" gap="1">
+                    <Flex align="center" gap="6">
+                      <Text size="2" style={{ color: 'var(--gray-10)', minWidth: '140px' }}>Fecha de Ingreso:</Text>
+                      <Text size="2" style={{ color: 'var(--gray-11)' }}>25/04/2024 8:54:27</Text>
+                    </Flex>
+                    <Flex align="center" gap="6">
+                      <Text size="2" style={{ color: 'var(--gray-10)', minWidth: '140px' }}>Toma de Muestra:</Text>
+                      <Text size="2" style={{ color: 'var(--gray-11)' }}>25/04/2024 8:54:27</Text>
+                    </Flex>
+                    <Flex align="center" gap="6">
+                      <Text size="2" style={{ color: 'var(--gray-10)', minWidth: '140px' }}>Fecha de Validación:</Text>
+                      <Text size="2" style={{ color: 'var(--gray-11)' }}>25/04/2024 8:54:27</Text>
+                    </Flex>
+                    <Flex align="center" gap="6">
+                      <Text size="2" style={{ color: 'var(--gray-10)', minWidth: '140px' }}>Profesional Solicitante:</Text>
+                      <Text size="2" style={{ color: 'var(--gray-11)' }}>ROMINA VARGAS CRUZ</Text>
+                    </Flex>
+                    <Flex align="center" gap="6">
+                      <Text size="2" style={{ color: 'var(--gray-10)', minWidth: '140px' }}>Procedencia:</Text>
+                      <Text size="2" style={{ color: 'var(--gray-11)' }}>CESFAM QUEBRADA VERDE</Text>
+                    </Flex>
+                  </Flex>
                 </Box>
-                <Box>
-                  <Text size="2" style={{ color: 'var(--gray-11)' }}>Valores Anormales</Text>
-                  <Text size="3" weight="medium" style={{ color: 'var(--red-11)' }}>
-                    {abnormalResults.length}
-                  </Text>
-                </Box>
-              </Flex>
-
-              {/* Contact Status Actions */}
-              <Separator />
-              <Box>
-                <Text size="3" weight="medium" style={{ marginBottom: 'var(--space-3)' }}>
-                  Estado de Contacto
-                </Text>
-                <Flex gap="3">
-                  <Button 
-                    color="orange" 
-                    variant={patient.contact_status === 'pending' ? 'solid' : 'outline'}
-                    onClick={() => updateContactStatus('pending')}
-                  >
-                    Pendiente
-                  </Button>
-                  <Button 
-                    color="green" 
-                    variant={patient.contact_status === 'contacted' ? 'solid' : 'outline'}
-                    onClick={() => updateContactStatus('contacted')}
-                  >
-                    Contactado
-                  </Button>
-                  <Button 
-                    color="blue" 
-                    variant={patient.contact_status === 'processed' ? 'solid' : 'outline'}
-                    onClick={() => updateContactStatus('processed')}
-                  >
-                    Procesado
-                  </Button>
+                <Flex direction="column" align="end" gap="2">
+                  <Flex align="center" gap="2">
+                    <Text size="2" style={{ color: 'var(--gray-11)' }}>Prioridad</Text>
+                    <Badge className="chip-error" size="1" style={{ width: '3.875rem', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      alta
+                    </Badge>
+                  </Flex>
+                  <Flex align="center" gap="2">
+                    <Text size="2" style={{ color: 'var(--gray-11)' }}>Exámenes</Text>
+                    <Badge className="chip-gray" size="1" style={{ width: '3.875rem', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      55
+                    </Badge>
+                  </Flex>
+                  <Flex align="center" gap="2">
+                    <Text size="2" style={{ color: 'var(--gray-11)' }}>Anormal</Text>
+                    <Badge className="chip-error" size="1" style={{ width: '3.875rem', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      17
+                    </Badge>
+                  </Flex>
                 </Flex>
-              </Box>
-            </Flex>
-          </Card>
+              </Flex>
+            </Card>
 
-          {/* Abnormal Results */}
-          {abnormalResults.length > 0 && (
-            <Card>
-              <Heading size="5" style={{ marginBottom: 'var(--space-4)', color: 'var(--red-11)' }}>
-                Valores Anormales ({abnormalResults.length})
-              </Heading>
-              <Flex direction="column" gap="3">
-                {abnormalResults.map((result) => (
-                  <Flex key={result.id} justify="between" align="center" p="3" style={{ 
-                    backgroundColor: 'var(--red-2)', 
-                    borderRadius: 'var(--radius-2)',
-                    border: '1px solid var(--red-6)'
-                  }}>
-                    <Box>
-                      <Text size="3" weight="medium" style={{ color: 'var(--red-12)' }}>
-                        {result.marker_type}
-                      </Text>
-                      <Text size="2" style={{ color: 'var(--red-11)' }}>
-                        Confianza: {Math.round(result.confidence * 100)}%
-                      </Text>
+            {/* Section 4: Results Table Card */}
+            {labResults.length > 0 ? (
+              <Card style={{ 
+                border: '1px solid var(--gray-6)',
+                backgroundColor: 'var(--color-panel)',
+                padding: '0',
+                overflow: 'auto'
+              }}>
+                {/* Table Rows */}
+                {labResults.map((result, index) => {
+                  const isAbnormal = result.is_abnormal
+                  const unit = getLabUnit(result.marker_type)
+                  const normalRange = getNormalRange(result.marker_type)
+                  
+                  return (
+                    <Box 
+                      key={result.id}
+                      style={{
+                        borderBottom: index < labResults.length - 1 ? '1px solid var(--gray-6)' : 'none',
+                        backgroundColor: 'var(--color-panel)'
+                      }}
+                    >
+                      <Flex align="center" style={{ minHeight: '40px', minWidth: '600px', padding: '8px 16px' }}>
+                        {/* Lab Name */}
+                        <Box style={{ flex: '1', minWidth: '250px' }}>
+                          <Text 
+                            size="2" 
+                            style={{ 
+                              color: isAbnormal ? 'var(--red-10)' : 'var(--labsense-text-primary)', 
+                              fontWeight: '400'
+                            }}
+                          >
+                            {result.marker_type}
+                          </Text>
+                        </Box>
+
+                        {/* Result Value */}
+                        <Box style={{ width: '120px', textAlign: 'right' }}>
+                          <Text 
+                            size="2" 
+                            weight="medium"
+                            style={{ 
+                              color: isAbnormal ? 'var(--red-10)' : 'var(--labsense-text-primary)'
+                            }}
+                          >
+                            {result.value}
+                          </Text>
+                        </Box>
+
+                        {/* Unit */}
+                        <Box style={{ width: '100px', textAlign: 'center' }}>
+                          <Text size="2" style={{ color: 'var(--gray-11)', fontWeight: '400' }}>
+                            ({unit})
+                          </Text>
+                        </Box>
+
+                        {/* Reference Range */}
+                        <Box style={{ width: '180px', textAlign: 'right' }}>
+                          <Text size="2" style={{ color: 'var(--gray-10)', fontWeight: '400' }}>
+                            {isAbnormal && '[ * ] '}{normalRange}
+                          </Text>
+                        </Box>
+                      </Flex>
                     </Box>
-                    <Flex align="center" gap="2">
-                      <Text size="4" weight="bold" style={{ color: 'var(--red-12)' }}>
-                        {result.value} {result.unit}
-                      </Text>
-                      {result.severity && (
-                        <Badge color="red" size="1">
-                          {result.severity.toUpperCase()}
-                        </Badge>
-                      )}
-                    </Flex>
-                  </Flex>
-                ))}
-              </Flex>
-            </Card>
-          )}
-
-          {/* Normal Results */}
-          {normalResults.length > 0 && (
-            <Card>
-              <Heading size="5" style={{ marginBottom: 'var(--space-4)', color: 'var(--green-11)' }}>
-                Valores Normales ({normalResults.length})
-              </Heading>
-              <Flex direction="column" gap="2">
-                {normalResults.map((result) => (
-                  <Flex key={result.id} justify="between" align="center" p="3" style={{ 
-                    backgroundColor: 'var(--gray-2)', 
-                    borderRadius: 'var(--radius-2)'
-                  }}>
-                    <Text size="3" weight="medium">
-                      {result.marker_type}
-                    </Text>
-                    <Text size="3">
-                      {result.value} {result.unit}
-                    </Text>
-                  </Flex>
-                ))}
-              </Flex>
-            </Card>
-          )}
-
-          {/* No Results */}
-          {labResults.length === 0 && (
-            <Card>
-              <Flex direction="column" align="center" gap="4" p="6">
-                <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--gray-9)' }}>
-                  lab_research
-                </span>
-                <Text size="4" style={{ color: 'var(--gray-11)' }}>
-                  No se encontraron resultados de laboratorio para este paciente
-                </Text>
-                <Button color="mint" variant="solid" asChild>
-                  <a href="/upload">
-                    <Flex align="center" gap="2">
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                        upload_file
-                      </span>
-                      Subir Resultado PDF
-                    </Flex>
-                  </a>
-                </Button>
-              </Flex>
-            </Card>
-          )}
+                  )
+                })}
+              </Card>
+            ) : (
+              <Card style={{ 
+                border: '1px solid var(--gray-6)',
+                backgroundColor: 'var(--color-panel)',
+                padding: '2rem'
+              }}>
+                <Flex direction="column" align="center" gap="4">
+                  <Text size="3" style={{ color: 'var(--gray-11)' }}>
+                    No se encontraron resultados de laboratorio para este paciente
+                  </Text>
+                  <Button color="mint" variant="solid" size="2">
+                    Subir Resultado PDF
+                  </Button>
+                </Flex>
+              </Card>
+            )}
+          </Card>
         </Flex>
-      </Container>
+      </Box>
     </DashboardLayout>
   )
 }

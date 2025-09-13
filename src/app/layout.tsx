@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Lexend_Deca } from 'next/font/google'
 import { Theme } from '@radix-ui/themes'
 import AuthSessionProvider from '@/components/providers/session-provider'
 import '@radix-ui/themes/styles.css'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const lexendDeca = Lexend_Deca({ 
+  subsets: ['latin'],
+  weight: ['200', '300', '400', '500', '600', '700'],
+})
 
 export const metadata: Metadata = {
   title: 'LabSense - Intelligent Lab Result Prioritization',
@@ -29,7 +32,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap" 
         />
       </head>
-      <body className={inter.className}>
+      <body className={lexendDeca.className}>
         <AuthSessionProvider>
           <Theme accentColor="mint" radius="full">
             {children}
