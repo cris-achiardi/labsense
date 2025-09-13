@@ -102,7 +102,7 @@ export interface PrioritizedPatient {
   priority_level: 'HIGH' | 'MEDIUM' | 'LOW'
   lab_report_id?: string
   pdf_file_path?: string
-  age_at_test?: number
+  age_at_test?: number | string
   gender?: string
   total_tests_count?: number
 }
