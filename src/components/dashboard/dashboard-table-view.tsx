@@ -267,309 +267,275 @@ export function DashboardTableView({
 		);
 	}
 
-	// Table-like view using Cards and Flex
+	// HTML Table Implementation
 	return (
 		<Box style={{ width: '100%' }}>
-			<Card
-				style={{
-					border: '1px solid var(--gray-6)',
-					overflow: 'hidden',
-				}}
-			>
-				{/* Table Header Card */}
-				<Box
-					style={{
-						backgroundColor: 'var(--color-panel)',
-						borderBottom: '1px solid var(--gray-6)',
-						padding: '0',
-					}}
-				>
-					<Flex align='center' style={{ minHeight: '40px' }}>
-						<Box style={{ flex: 1, padding: '8px', minWidth: '200px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+			
+			<Card style={{ 
+				border: '1px solid var(--gray-6)',
+				overflow: 'auto'
+			}}>
+				<table style={{ 
+					width: '100%', 
+					borderCollapse: 'collapse',
+					fontSize: '14px'
+				}}>
+					<thead>
+						<tr style={{ 
+							backgroundColor: 'var(--color-panel)',
+							borderBottom: '1px solid var(--gray-6)'
+						}}>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								minWidth: '200px'
+							}}>
 								Nombre del Paciente (ID)
-							</Text>
-						</Box>
-						<Box style={{ width: '120px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '120px'
+							}}>
 								RUT
-							</Text>
-						</Box>
-						<Box style={{ width: '80px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '80px'
+							}}>
 								Edad
-							</Text>
-						</Box>
-						<Box style={{ width: '70px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '70px'
+							}}>
 								Sexo
-							</Text>
-						</Box>
-						<Box style={{ width: '100px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '100px'
+							}}>
 								Prioridad
-							</Text>
-						</Box>
-						<Box style={{ width: '130px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '130px'
+							}}>
 								Fecha Examen
-							</Text>
-						</Box>
-						<Box style={{ width: '70px', padding: '8px' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'left', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '70px'
+							}}>
 								Folio
-							</Text>
-						</Box>
-						<Box style={{ width: '90px', padding: '8px', textAlign: 'center' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'center', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '90px'
+							}}>
 								Exámenes
-							</Text>
-						</Box>
-						<Box style={{ width: '80px', padding: '8px', textAlign: 'center' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'center', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '80px'
+							}}>
 								Anormal
-							</Text>
-						</Box>
-						<Box
-							style={{ width: '100px', padding: '8px', textAlign: 'center' }}
-						>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'center', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '100px'
+							}}>
 								Pje. Riesgo
-							</Text>
-						</Box>
-						<Box style={{ width: '60px', padding: '8px', textAlign: 'center' }}>
-							<Text
-								size='2'
-								weight='medium'
-								style={{ color: 'var(--gray-12)' }}
-							>
+							</th>
+							<th style={{ 
+								padding: '8px', 
+								textAlign: 'center', 
+								fontWeight: '500',
+								color: 'var(--gray-12)',
+								width: '60px'
+							}}>
 								PDF
-							</Text>
-						</Box>
-					</Flex>
-				</Box>
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						{patients.map((patient, index) => {
+							const priorityBadge = getPriorityBadge(patient.priority_level);
+							
+							return (
+								<tr 
+									key={patient.id}
+									style={{
+										borderBottom: index < patients.length - 1 ? '1px solid var(--gray-6)' : 'none',
+										backgroundColor: 'var(--color-panel)',
+										transition: 'background-color 0.2s ease'
+									}}
+									onMouseEnter={(e) => {
+										e.currentTarget.style.backgroundColor = 'var(--gray-3)';
+									}}
+									onMouseLeave={(e) => {
+										e.currentTarget.style.backgroundColor = 'var(--color-panel)';
+									}}
+								>
+									{/* Patient Name and ID */}
+									<td style={{ padding: '8px', minHeight: '40px', verticalAlign: 'middle' }}>
+										<Flex align="center" gap="2">
+											<Text 
+												size="2"
+												style={{ 
+													color: 'var(--blue-11)', 
+													cursor: 'pointer',
+													fontWeight: '300'
+												}}
+												onClick={() => handlePatientClick(patient.id)}
+											>
+												{anonymizeName(patient.name)}
+											</Text>
+											<Text size="2" style={{ color: 'var(--blue-11)', fontWeight: '300' }}>
+												({patient.id.slice(-5)})
+											</Text>
+										</Flex>
+									</td>
 
-				{/* Table Rows as Cards */}
-				{patients.map((patient, index) => {
-					const priorityBadge = getPriorityBadge(patient.priority_level);
+									{/* RUT */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{anonymizeRut(patient.rut)}
+										</Text>
+									</td>
 
-					return (
-						<Box
-							key={patient.id}
-							style={{
-								borderBottom:
-									index < patients.length - 1
-										? '1px solid var(--gray-6)'
-										: 'none',
-								backgroundColor: 'var(--color-panel)',
-							}}
-						>
-							<Flex align='center' style={{ minHeight: '40px' }}>
-								{/* Patient Name and ID */}
-								<Box style={{ flex: 1, padding: '8px', minWidth: '200px' }}>
-									<Flex align='center' gap='2'>
-										<Text
-											size='2'
-											style={{
-												color: 'var(--blue-11)',
-												cursor: 'pointer',
-												fontWeight: '300',
+									{/* Age */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{formatAge(patient.age_at_test)}
+										</Text>
+									</td>
+
+									{/* Gender */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{patient.gender ?? 'N/A'}
+										</Text>
+									</td>
+
+									{/* Priority Badge */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Badge 
+											color={priorityBadge.color} 
+											variant={priorityBadge.variant}
+											size="1"
+											style={{ fontSize: '12px' }}
+										>
+											{priorityBadge.text}
+										</Badge>
+									</td>
+
+									{/* Test Date */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{formatDate(patient.test_date)}
+										</Text>
+									</td>
+
+									{/* Folio */}
+									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
+										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{patient.lab_report_id?.slice(-6) || 'N/A'}
+										</Text>
+									</td>
+
+									{/* Total Tests Count */}
+									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
+										<Text size="1" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+											{patient.total_tests_count || 0}
+										</Text>
+									</td>
+
+									{/* Abnormal Count */}
+									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
+										<Text 
+											size="1" 
+											style={{ 
+												color: patient.abnormal_count > 0 ? 'var(--red-11)' : 'var(--gray-12)', 
+												fontWeight: '300' 
 											}}
-											onClick={() => handlePatientClick(patient.id)}
 										>
-											{anonymizeName(patient.name)}
+											{patient.abnormal_count || 0}
 										</Text>
-										<Text
-											size='2'
-											style={{ color: 'var(--blue-11)', fontWeight: '300' }}
+									</td>
+
+									{/* Priority Score */}
+									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
+										<Text 
+											size="1" 
+											style={{ 
+												color: patient.priority_score > 1000 ? 'var(--red-11)' : 
+													   patient.priority_score > 100 ? 'var(--amber-9)' : 
+													   'var(--green-11)', 
+												fontWeight: '300' 
+											}}
 										>
-											({patient.id.slice(-5)})
+											{patient.priority_score || 0}
 										</Text>
-									</Flex>
-								</Box>
+									</td>
 
-								{/* RUT */}
-								<Box style={{ width: '120px', padding: '8px' }}>
-									<Text
-										size='2'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{anonymizeRut(patient.rut)}
-									</Text>
-								</Box>
-
-								{/* Age */}
-								<Box style={{ width: '80px', padding: '8px' }}>
-									<Text
-										size='2'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{formatAge(patient.age_at_test)}
-									</Text>
-								</Box>
-
-								{/* Gender */}
-								<Box style={{ width: '70px', padding: '8px' }}>
-									<Text
-										size='2'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{patient.gender ?? 'N/A'}
-									</Text>
-								</Box>
-
-								{/* Priority Badge */}
-								<Box style={{ width: '100px', padding: '8px' }}>
-									<Badge
-										color={priorityBadge.color}
-										variant={priorityBadge.variant}
-										size='1'
-										style={{ fontSize: '12px' }}
-									>
-										{priorityBadge.text}
-									</Badge>
-								</Box>
-
-								{/* Test Date */}
-								<Box style={{ width: '130px', padding: '8px' }}>
-									<Text
-										size='2'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{formatDate(patient.test_date)}
-									</Text>
-								</Box>
-
-								{/* Folio */}
-								<Box style={{ width: '70px', padding: '8px' }}>
-									<Text
-										size='2'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{patient.lab_report_id?.slice(-6) || 'N/A'}
-									</Text>
-								</Box>
-
-								{/* Total Tests Count */}
-								<Box
-									style={{ width: '90px', padding: '8px', textAlign: 'center' }}
-								>
-									<Text
-										size='1'
-										style={{ color: 'var(--gray-12)', fontWeight: '300' }}
-									>
-										{patient.total_tests_count || 0}
-									</Text>
-								</Box>
-
-								{/* Abnormal Count */}
-								<Box
-									style={{ width: '80px', padding: '8px', textAlign: 'center' }}
-								>
-									<Text
-										size='1'
-										style={{
-											color:
-												patient.abnormal_count > 0
-													? 'var(--red-11)'
-													: 'var(--gray-12)',
-											fontWeight: '300',
-										}}
-									>
-										{patient.abnormal_count || 0}
-									</Text>
-								</Box>
-
-								{/* Priority Score */}
-								<Box
-									style={{
-										width: '100px',
-										padding: '8px',
-										textAlign: 'center',
-									}}
-								>
-									<Text
-										size='1'
-										style={{
-											color:
-												patient.priority_score > 1000
-													? 'var(--red-11)'
-													: patient.priority_score > 100
-														? 'var(--amber-9)'
-														: 'var(--green-11)',
-											fontWeight: '300',
-										}}
-									>
-										{patient.priority_score || 0}
-									</Text>
-								</Box>
-
-								{/* PDF Button */}
-								<Box
-									style={{
-										width: '60px',
-										padding: '8px',
-										textAlign: 'center',
-										minHeight: '46px',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-									}}
-								>
-									<PDFViewerButton
-										pdfUrl={
-											patient.pdf_file_path ||
-											'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-										}
-										patientRut={patient.rut}
-										labReportId={patient.lab_report_id || 'test-report'}
-										patientName={patient.name}
-									/>
-								</Box>
-							</Flex>
-						</Box>
-					);
-				})}
+									{/* PDF Button */}
+									<td style={{ 
+										padding: '8px', 
+										textAlign: 'center', 
+										verticalAlign: 'middle',
+										display: 'table-cell'
+									}}>
+										<div style={{ 
+											display: 'flex', 
+											justifyContent: 'center', 
+											alignItems: 'center',
+											width: '100%'
+										}}>
+											<PDFViewerButton
+												pdfUrl={
+													patient.pdf_file_path ||
+													'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+												}
+												patientRut={patient.rut}
+												labReportId={patient.lab_report_id || 'test-report'}
+												patientName={patient.name}
+											/>
+										</div>
+									</td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
 			</Card>
 		</Box>
 	);
