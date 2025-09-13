@@ -270,118 +270,145 @@ export function DashboardTableView({
 	// HTML Table Implementation
 	return (
 		<Box style={{ width: '100%' }}>
-			
-			<Card style={{ 
-				border: '1px solid var(--gray-6)',
-				overflow: 'auto'
-			}}>
-				<table style={{ 
-					width: '100%', 
-					borderCollapse: 'collapse',
-					fontSize: '14px'
-				}}>
+			<Card
+				style={{
+					border: '1px solid var(--gray-6)',
+					overflow: 'auto',
+				}}
+			>
+				<table
+					style={{
+						width: '100%',
+						borderCollapse: 'collapse',
+						fontSize: '14px',
+					}}
+				>
 					<thead>
-						<tr style={{ 
-							backgroundColor: 'var(--color-panel)',
-							borderBottom: '1px solid var(--gray-6)'
-						}}>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								minWidth: '200px'
-							}}>
+						<tr
+							style={{
+								backgroundColor: 'var(--color-panel)',
+								borderBottom: '1px solid var(--gray-6)',
+							}}
+						>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									minWidth: '200px',
+								}}
+							>
 								Nombre del Paciente (ID)
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '120px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '120px',
+								}}
+							>
 								RUT
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '80px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '80px',
+								}}
+							>
 								Edad
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '70px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '70px',
+								}}
+							>
 								Sexo
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '100px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '100px',
+								}}
+							>
 								Prioridad
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '130px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '130px',
+								}}
+							>
 								Fecha Examen
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'left', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '70px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'left',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '70px',
+								}}
+							>
 								Folio
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'center', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '90px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'center',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '90px',
+								}}
+							>
 								Exámenes
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'center', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '80px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'center',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '80px',
+								}}
+							>
 								Anormal
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'center', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '100px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'center',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '100px',
+								}}
+							>
 								Pje. Riesgo
 							</th>
-							<th style={{ 
-								padding: '8px', 
-								textAlign: 'center', 
-								fontWeight: '500',
-								color: 'var(--gray-12)',
-								width: '60px'
-							}}>
+							<th
+								style={{
+									padding: '8px',
+									textAlign: 'center',
+									fontWeight: '500',
+									color: 'var(--gray-12)',
+									width: '60px',
+								}}
+							>
 								PDF
 							</th>
 						</tr>
@@ -389,37 +416,50 @@ export function DashboardTableView({
 					<tbody>
 						{patients.map((patient, index) => {
 							const priorityBadge = getPriorityBadge(patient.priority_level);
-							
+
 							return (
-								<tr 
+								<tr
 									key={patient.id}
 									style={{
-										borderBottom: index < patients.length - 1 ? '1px solid var(--gray-6)' : 'none',
+										borderBottom:
+											index < patients.length - 1
+												? '1px solid var(--gray-6)'
+												: 'none',
 										backgroundColor: 'var(--color-panel)',
-										transition: 'background-color 0.2s ease'
+										transition: 'background-color 0.2s ease',
 									}}
 									onMouseEnter={(e) => {
 										e.currentTarget.style.backgroundColor = 'var(--gray-3)';
 									}}
 									onMouseLeave={(e) => {
-										e.currentTarget.style.backgroundColor = 'var(--color-panel)';
+										e.currentTarget.style.backgroundColor =
+											'var(--color-panel)';
 									}}
 								>
 									{/* Patient Name and ID */}
-									<td style={{ padding: '8px', minHeight: '40px', verticalAlign: 'middle' }}>
-										<Flex align="center" gap="2">
-											<Text 
-												size="2"
-												style={{ 
-													color: 'var(--blue-11)', 
+									<td
+										style={{
+											padding: '8px',
+											minHeight: '40px',
+											verticalAlign: 'middle',
+										}}
+									>
+										<Flex align='center' gap='2'>
+											<Text
+												size='2'
+												style={{
+													color: 'var(--blue-11)',
 													cursor: 'pointer',
-													fontWeight: '300'
+													fontWeight: '300',
 												}}
 												onClick={() => handlePatientClick(patient.id)}
 											>
 												{anonymizeName(patient.name)}
 											</Text>
-											<Text size="2" style={{ color: 'var(--blue-11)', fontWeight: '300' }}>
+											<Text
+												size='2'
+												style={{ color: 'var(--blue-11)', fontWeight: '300' }}
+											>
 												({patient.id.slice(-5)})
 											</Text>
 										</Flex>
@@ -427,31 +467,40 @@ export function DashboardTableView({
 
 									{/* RUT */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+										<Text
+											size='2'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
 											{anonymizeRut(patient.rut)}
 										</Text>
 									</td>
 
 									{/* Age */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+										<Text
+											size='2'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
 											{formatAge(patient.age_at_test)}
 										</Text>
 									</td>
 
 									{/* Gender */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+										<Text
+											size='2'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
 											{patient.gender ?? 'N/A'}
 										</Text>
 									</td>
 
 									{/* Priority Badge */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Badge 
-											color={priorityBadge.color} 
+										<Badge
+											color={priorityBadge.color}
 											variant={priorityBadge.variant}
-											size="1"
+											size='1'
 											style={{ fontSize: '12px' }}
 										>
 											{priorityBadge.text}
@@ -460,32 +509,56 @@ export function DashboardTableView({
 
 									{/* Test Date */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+										<Text
+											size='2'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
 											{formatDate(patient.test_date)}
 										</Text>
 									</td>
 
 									{/* Folio */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
-										<Text size="2" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
-											{patient.lab_report_id?.slice(-6) || 'N/A'}
+										<Text
+											size='2'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
+											{patient.lab_report_id || 'N/A'}
 										</Text>
 									</td>
 
 									{/* Total Tests Count */}
-									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
-										<Text size="1" style={{ color: 'var(--gray-12)', fontWeight: '300' }}>
+									<td
+										style={{
+											padding: '8px',
+											textAlign: 'center',
+											verticalAlign: 'middle',
+										}}
+									>
+										<Text
+											size='1'
+											style={{ color: 'var(--gray-12)', fontWeight: '300' }}
+										>
 											{patient.total_tests_count || 0}
 										</Text>
 									</td>
 
 									{/* Abnormal Count */}
-									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
-										<Text 
-											size="1" 
-											style={{ 
-												color: patient.abnormal_count > 0 ? 'var(--red-11)' : 'var(--gray-12)', 
-												fontWeight: '300' 
+									<td
+										style={{
+											padding: '8px',
+											textAlign: 'center',
+											verticalAlign: 'middle',
+										}}
+									>
+										<Text
+											size='1'
+											style={{
+												color:
+													patient.abnormal_count > 0
+														? 'var(--red-11)'
+														: 'var(--gray-12)',
+												fontWeight: '300',
 											}}
 										>
 											{patient.abnormal_count || 0}
@@ -493,14 +566,23 @@ export function DashboardTableView({
 									</td>
 
 									{/* Priority Score */}
-									<td style={{ padding: '8px', textAlign: 'center', verticalAlign: 'middle' }}>
-										<Text 
-											size="1" 
-											style={{ 
-												color: patient.priority_score > 1000 ? 'var(--red-11)' : 
-													   patient.priority_score > 100 ? 'var(--amber-9)' : 
-													   'var(--green-11)', 
-												fontWeight: '300' 
+									<td
+										style={{
+											padding: '8px',
+											textAlign: 'center',
+											verticalAlign: 'middle',
+										}}
+									>
+										<Text
+											size='1'
+											style={{
+												color:
+													patient.priority_score > 1000
+														? 'var(--red-11)'
+														: patient.priority_score > 100
+															? 'var(--amber-9)'
+															: 'var(--green-11)',
+												fontWeight: '300',
 											}}
 										>
 											{patient.priority_score || 0}
@@ -508,18 +590,22 @@ export function DashboardTableView({
 									</td>
 
 									{/* PDF Button */}
-									<td style={{ 
-										padding: '8px', 
-										textAlign: 'center', 
-										verticalAlign: 'middle',
-										display: 'table-cell'
-									}}>
-										<div style={{ 
-											display: 'flex', 
-											justifyContent: 'center', 
-											alignItems: 'center',
-											width: '100%'
-										}}>
+									<td
+										style={{
+											padding: '8px',
+											textAlign: 'center',
+											verticalAlign: 'middle',
+											display: 'table-cell',
+										}}
+									>
+										<div
+											style={{
+												display: 'flex',
+												justifyContent: 'center',
+												alignItems: 'center',
+												width: '100%',
+											}}
+										>
 											<PDFViewerButton
 												pdfUrl={
 													patient.pdf_file_path ||
