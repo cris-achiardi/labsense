@@ -122,9 +122,10 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 		}
 
-		// Get PDF file from form data
+		// Get PDF file and overwrite flag from form data
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
+		const overwrite = formData.get('overwrite') === 'true';
 
 		if (!file) {
 			return NextResponse.json(
@@ -209,8 +210,9 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Check for duplicate folio if present
-		if (extractionResult.metadata.folio) {
+		// Check for duplicate folio if present (unless overwrite is enabled)
+		let existingReportId: string | null = null;
+		if (extractionResult.metadata.folio && !overwrite) {
 			const { data: existingReport } = await supabase
 				.from('lab_reports')
 				.select('id, folio')
@@ -220,13 +222,25 @@ export async function POST(request: NextRequest) {
 			if (existingReport) {
 				return NextResponse.json(
 					{
-						error: `Ya existe un examen con folio ${extractionResult.metadata.folio}`,
+						error: `Ya existe un examen con folio ${extractionResult.metadata.folio}. Use overwrite=true para reemplazar los datos.`,
 						success: false,
 						duplicate: true,
 						existingReportId: existingReport.id,
 					},
 					{ status: 409 }
 				);
+			}
+		} else if (extractionResult.metadata.folio && overwrite) {
+			// When overwriting, find existing report to update/replace
+			const { data: existingReport } = await supabase
+				.from('lab_reports')
+				.select('id, folio')
+				.eq('folio', extractionResult.metadata.folio)
+				.single();
+
+			if (existingReport) {
+				existingReportId = existingReport.id;
+				console.log(`🔄 Overwriting existing report with folio ${extractionResult.metadata.folio}, ID: ${existingReportId}`);
 			}
 		}
 
@@ -282,6 +296,8 @@ export async function POST(request: NextRequest) {
 				p_file_name: file.name,
 				p_file_path: `lab-pdfs/${Date.now()}-${file.name}`, // Placeholder path
 				p_file_size: file.size,
+				p_overwrite: overwrite,
+				p_existing_report_id: existingReportId,
 			}
 		);
 
@@ -317,6 +333,8 @@ export async function POST(request: NextRequest) {
 			abnormalCount: extractionResult.metadata.abnormalCount,
 			criticalCount: extractionResult.metadata.criticalCount,
 			labReportId,
+			overwrite: overwrite,
+			existingReportId: existingReportId,
 		});
 
 		// Return success response
@@ -356,8 +374,12 @@ export async function GET() {
 	return NextResponse.json({
 		message: 'Complete Lab Processing API',
 		description:
-			'Processes and stores complete lab extraction results with duplicate prevention',
+			'Processes and stores complete lab extraction results with duplicate prevention and overwrite option',
 		method: 'POST',
+		parameters: {
+			pdf: 'PDF file to process (required)',
+			overwrite: 'Boolean flag to allow overwriting existing folio data (optional, default: false)'
+		},
 		status: 'available',
 	});
 }
