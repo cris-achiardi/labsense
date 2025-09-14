@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { DashboardLayout } from '@/components/ui/dashboard-layout'
 import { Card, Heading, Text, Button, Flex, Box, Container, Badge, Separator } from '@radix-ui/themes'
+import { CHILEAN_HEALTH_MARKERS } from '@/lib/pdf-parsing/spanish-health-markers'
 
 interface Patient {
   id: string
@@ -192,42 +193,67 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
   const abnormalResults = labResults.filter(result => result.is_abnormal)
   const normalResults = labResults.filter(result => !result.is_abnormal)
 
-  // Helper functions for hardcoded data
+  // Dynamic helper functions using CHILEAN_HEALTH_MARKERS as single source of truth
   const getLabUnit = (markerType: string): string => {
+    // Try to find exact match by system code first
+    const exactMatch = CHILEAN_HEALTH_MARKERS.find(marker => 
+      marker.systemCode === markerType
+    )
+    if (exactMatch?.unit) return exactMatch.unit
+
+    // Try to find by Spanish name (case-insensitive match)
+    const spanishMatch = CHILEAN_HEALTH_MARKERS.find(marker => 
+      marker.spanishName.toLowerCase().includes(markerType.toLowerCase()) ||
+      markerType.toLowerCase().includes(marker.spanishName.toLowerCase())
+    )
+    if (spanishMatch?.unit) return spanishMatch.unit
+
+    // Fallback for partial matches
     const marker = markerType.toLowerCase()
-    if (marker.includes('glicemia') || marker.includes('glucosa')) return 'mg/dL'
-    if (marker.includes('bilirrubina')) return 'mg/dL'
-    if (marker.includes('got') || marker.includes('gpt') || marker.includes('ast') || marker.includes('alt')) return 'U/L'
-    if (marker.includes('fosfatasa')) return 'U/L'
-    if (marker.includes('ggt')) return 'U/L'
-    if (marker.includes('nitrogeno') || marker.includes('urea')) return 'mg/dL'
-    if (marker.includes('acido urico')) return 'mg/dL'
-    if (marker.includes('sodio') || marker.includes('potasio') || marker.includes('cloro')) return 'mEq/L'
-    if (marker.includes('creatinina')) return 'mg/dL'
-    if (marker.includes('colesterol') || marker.includes('trigliceridos')) return 'mg/dL'
-    if (marker.includes('hemoglobina') || marker.includes('hematocrito')) return 'g/dL'
-    if (marker.includes('tsh')) return 'μUI/mL'
-    return 'mg/dL' // default
+    const partialMatch = CHILEAN_HEALTH_MARKERS.find(m => {
+      const spanish = m.spanishName.toLowerCase()
+      return spanish.includes('glicemia') && marker.includes('glicemia') ||
+             spanish.includes('colesterol') && marker.includes('colesterol') ||
+             spanish.includes('trigliceridos') && marker.includes('trigliceridos') ||
+             spanish.includes('tsh') && marker.includes('tsh') ||
+             spanish.includes('got') && (marker.includes('got') || marker.includes('ast')) ||
+             spanish.includes('gpt') && (marker.includes('gpt') || marker.includes('alt')) ||
+             spanish.includes('creatinina') && marker.includes('creatinina') ||
+             spanish.includes('hemoglobina') && marker.includes('hemoglobina')
+    })
+    
+    return partialMatch?.unit || 'mg/dL' // default
   }
 
   const getNormalRange = (markerType: string): string => {
+    // Try to find exact match by system code first
+    const exactMatch = CHILEAN_HEALTH_MARKERS.find(marker => 
+      marker.systemCode === markerType
+    )
+    if (exactMatch?.normalRange?.text) return exactMatch.normalRange.text
+
+    // Try to find by Spanish name (case-insensitive match)
+    const spanishMatch = CHILEAN_HEALTH_MARKERS.find(marker => 
+      marker.spanishName.toLowerCase().includes(markerType.toLowerCase()) ||
+      markerType.toLowerCase().includes(marker.spanishName.toLowerCase())
+    )
+    if (spanishMatch?.normalRange?.text) return spanishMatch.normalRange.text
+
+    // Fallback for partial matches
     const marker = markerType.toLowerCase()
-    if (marker.includes('glicemia') || marker.includes('glucosa')) return '74 - 106'
-    if (marker.includes('bilirrubina directa')) return 'Menor a 0.50'
-    if (marker.includes('bilirrubina total')) return '0,3 - 1,2'
-    if (marker.includes('got') || marker.includes('ast')) return 'Hasta 34'
-    if (marker.includes('gpt') || marker.includes('alt')) return '10 - 49'
-    if (marker.includes('fosfatasa')) return '46 - 116'
-    if (marker.includes('ggt')) return 'Menor a 73'
-    if (marker.includes('nitrogeno') || marker.includes('urea')) return '9 - 23'
-    if (marker.includes('acido urico')) return '3,7 - 9,2'
-    if (marker.includes('sodio')) return '136 - 145'
-    if (marker.includes('potasio')) return '3,5 - 5,1'
-    if (marker.includes('cloro')) return '98 - 107'
-    if (marker.includes('tsh')) return '0,55 - 4,78'
-    if (marker.includes('colesterol total')) return '19,8 - 44'
-    if (marker.includes('trigliceridos')) return 'Hasta 150'
-    return 'Valor normal' // default
+    const partialMatch = CHILEAN_HEALTH_MARKERS.find(m => {
+      const spanish = m.spanishName.toLowerCase()
+      return spanish.includes('glicemia') && marker.includes('glicemia') ||
+             spanish.includes('colesterol') && marker.includes('colesterol') ||
+             spanish.includes('trigliceridos') && marker.includes('trigliceridos') ||
+             spanish.includes('tsh') && marker.includes('tsh') ||
+             spanish.includes('got') && (marker.includes('got') || marker.includes('ast')) ||
+             spanish.includes('gpt') && (marker.includes('gpt') || marker.includes('alt')) ||
+             spanish.includes('creatinina') && marker.includes('creatinina') ||
+             spanish.includes('hemoglobina') && marker.includes('hemoglobina')
+    })
+    
+    return partialMatch?.normalRange?.text || 'Consultar médico' // default
   }
 
   return (
