@@ -100,7 +100,6 @@ export interface PrioritizedPatient {
   abnormal_count: number
   abnormal_markers?: string
   priority_level: 'HIGH' | 'MEDIUM' | 'LOW'
-  priority_score: number
   lab_report_id?: string
   pdf_file_path?: string
   age_at_test?: number | string
