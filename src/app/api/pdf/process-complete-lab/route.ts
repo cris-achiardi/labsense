@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 		// Get PDF file and overwrite flag from form data
 		const formData = await request.formData();
 		const file = formData.get('pdf') as File;
-		const overwrite = formData.get('overwrite') === 'true';
+		let overwrite = formData.get('overwrite') === 'true';
 
 		if (!file) {
 			return NextResponse.json(
@@ -210,37 +210,21 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Check for duplicate folio if present (unless overwrite is enabled)
+		// Auto-overwrite existing reports with same folio
 		let existingReportId: string | null = null;
-		if (extractionResult.metadata.folio && !overwrite) {
-			const { data: existingReport } = await supabase
+		if (extractionResult.metadata.folio) {
+			// Check for existing reports with same folio
+			const { data: allReports } = await supabaseAdmin
 				.from('lab_reports')
-				.select('id, folio')
+				.select('id, folio, created_at')
 				.eq('folio', extractionResult.metadata.folio)
-				.single();
+				.order('created_at', { ascending: false });
 
-			if (existingReport) {
-				return NextResponse.json(
-					{
-						error: `Ya existe un examen con folio ${extractionResult.metadata.folio}. Use overwrite=true para reemplazar los datos.`,
-						success: false,
-						duplicate: true,
-						existingReportId: existingReport.id,
-					},
-					{ status: 409 }
-				);
-			}
-		} else if (extractionResult.metadata.folio && overwrite) {
-			// When overwriting, find existing report to update/replace
-			const { data: existingReport } = await supabase
-				.from('lab_reports')
-				.select('id, folio')
-				.eq('folio', extractionResult.metadata.folio)
-				.single();
-
-			if (existingReport) {
-				existingReportId = existingReport.id;
-				console.log(`🔄 Overwriting existing report with folio ${extractionResult.metadata.folio}, ID: ${existingReportId}`);
+			// If existing reports found, use the most recent one for overwrite
+			if (allReports && allReports.length > 0) {
+				existingReportId = allReports[0].id;
+				overwrite = true;
+				console.log(`🔄 Overwriting existing report for folio ${extractionResult.metadata.folio}`);
 			}
 		}
 
@@ -354,7 +338,7 @@ export async function POST(request: NextRequest) {
 					criticalResults: extractionResult.metadata.criticalCount,
 					confidence: extractionResult.confidence,
 				},
-				storedReport: storedReport || null,
+				storedReport: storedReport || null
 			},
 		});
 	} catch (error) {
