@@ -12,7 +12,7 @@ import {
 } from '@radix-ui/themes';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CHILEAN_HEALTH_MARKERS } from '@/lib/pdf-parsing/spanish-health-markers';
 import { getPriorityBadgeProps } from '@/lib/utils/priority';
 
@@ -80,13 +80,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		}
 	}, [status, router]);
 
-	useEffect(() => {
-		if (session && patientId) {
-			fetchPatientData();
-		}
-	}, [session, patientId]);
-
-	const fetchPatientData = async () => {
+	const fetchPatientData = useCallback(async () => {
 		try {
 			setLoading(true);
 
@@ -120,7 +114,13 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [patientId]);
+
+	useEffect(() => {
+		if (session && patientId) {
+			fetchPatientData();
+		}
+	}, [session, patientId, fetchPatientData]);
 
 	const updateContactStatus = async (newStatus: string) => {
 		if (!patientId) return;
@@ -481,8 +481,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 											Prioridad
 										</Text>
 										<Badge
-											color={getPriorityBadgeProps(patient.priority_score).color}
-											variant={getPriorityBadgeProps(patient.priority_score).variant}
+											className={getPriorityBadgeProps(patient.priority_score).chipClass}
 											size='1'
 											style={{
 												width: '3.875rem',

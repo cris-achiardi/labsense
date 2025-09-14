@@ -193,8 +193,7 @@ export function DashboardTableView({
 										{anonymizeName(patient.name)}
 									</Text>
 									<Badge
-										color={priorityBadge.color}
-										variant={priorityBadge.variant}
+										className={priorityBadge.chipClass}
 									>
 										{priorityBadge.text}
 									</Badge>
@@ -471,10 +470,8 @@ export function DashboardTableView({
 									{/* Priority Badge */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
 										<Badge
-											color={priorityBadge.color}
-											variant={priorityBadge.variant}
+											className={priorityBadge.chipClass}
 											size='1'
-											style={{ fontSize: '12px' }}
 										>
 											{priorityBadge.text}
 										</Badge>

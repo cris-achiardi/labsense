@@ -214,7 +214,7 @@ export function PrioritizedPatientList({
                     <Text weight="bold" size="3">
                       {anonymizeName(patient.name)}
                     </Text>
-                    <Badge color={priorityBadge.color} variant={priorityBadge.variant}>
+                    <Badge className={priorityBadge.chipClass}>
                       {priorityBadge.text}
                     </Badge>
                   </Flex>
