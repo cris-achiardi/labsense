@@ -185,33 +185,41 @@ input[type="date"].rt-TextFieldInput {
 
 /* Custom chip/badge components */
 .chip-success {
-  background-color: var(--chip-success-bg) !important;
-  color: var(--chip-success-text) !important;
-  font-size: 12px !important;
-  font-weight: 300 !important;
-  border: none !important;
+  background-color: var(--chip-success-bg);
+  color: var(--chip-success-text);
+  font-size: 12px;
+  font-weight: 300;
+  border: none;
 }
 
 .chip-warning {
-  background-color: var(--chip-warning-bg) !important;
-  color: var(--chip-warning-text) !important;
-  font-size: 12px !important;
-  font-weight: 300 !important;
-  border: none !important;
+  background-color: var(--chip-warning-bg);
+  color: var(--chip-warning-text);
+  font-size: 12px;
+  font-weight: 300;
+  border: none;
 }
 
 .chip-error {
-  background-color: var(--chip-error-bg) !important;
-  color: var(--chip-error-text) !important;
-  font-size: 12px !important;
-  font-weight: 300 !important;
-  border: none !important;
+  background-color: var(--chip-error-bg);
+  color: var(--chip-error-text);
+  font-size: 12px;
+  font-weight: 300;
+  border: none;
+}
+
+.chip-info {
+  background-color: #FEF3C7;
+  color: #92400E;
+  font-size: 12px;
+  font-weight: 300;
+  border: none;
 }
 
 .chip-gray {
-  background-color: var(--chip-gray-bg) !important;
-  color: var(--chip-gray-text) !important;
-  font-size: 12px !important;
-  font-weight: 300 !important;
-  border: none !important;
+  background-color: var(--chip-gray-bg);
+  color: var(--chip-gray-text);
+  font-size: 12px;
+  font-weight: 300;
+  border: none;
 }

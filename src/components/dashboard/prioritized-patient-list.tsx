@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { getPriorityBadgeProps } from '@/lib/utils/priority'
 import { Card, Heading, Text, Button, Badge, Flex, Box, Container, Spinner } from '@radix-ui/themes'
 import { PrioritizedPatient, PatientFilters } from '@/types/database'
 import { db } from '@/lib/database'
@@ -93,18 +94,6 @@ export function PrioritizedPatientList({
     }
   }
 
-  const getPriorityBadgeProps = (priorityLevel: 'HIGH' | 'MEDIUM' | 'LOW') => {
-    switch (priorityLevel) {
-      case 'HIGH':
-        return { color: 'red' as const, variant: 'solid' as const, text: 'ALTA PRIORIDAD' }
-      case 'MEDIUM':
-        return { color: 'orange' as const, variant: 'solid' as const, text: 'PRIORIDAD MEDIA' }
-      case 'LOW':
-        return { color: 'green' as const, variant: 'solid' as const, text: 'PRIORIDAD BAJA' }
-      default:
-        return { color: 'gray' as const, variant: 'soft' as const, text: 'SIN CLASIFICAR' }
-    }
-  }
 
   const getContactStatusBadge = (status: 'pending' | 'contacted' | 'processed') => {
     switch (status) {
@@ -214,7 +203,7 @@ export function PrioritizedPatientList({
 
         <Flex gap="4" wrap="wrap">
           {patients.map((patient) => {
-            const priorityBadge = getPriorityBadgeProps(patient.priority_level)
+            const priorityBadge = getPriorityBadgeProps(patient.priority_score)
             const contactBadge = getContactStatusBadge(patient.contact_status)
             
             return (
@@ -225,7 +214,7 @@ export function PrioritizedPatientList({
                     <Text weight="bold" size="3">
                       {anonymizeName(patient.name)}
                     </Text>
-                    <Badge color={priorityBadge.color} variant={priorityBadge.variant}>
+                    <Badge className={priorityBadge.chipClass}>
                       {priorityBadge.text}
                     </Badge>
                   </Flex>

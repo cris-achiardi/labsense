@@ -15,6 +15,7 @@ import {
 } from '@radix-ui/themes';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { getPriorityBadgeProps } from '@/lib/utils/priority';
 
 interface DashboardTableViewProps {
 	limit?: number;
@@ -68,34 +69,6 @@ export function DashboardTableView({
 		}
 	};
 
-	const getPriorityBadge = (priorityLevel: 'HIGH' | 'MEDIUM' | 'LOW') => {
-		switch (priorityLevel) {
-			case 'HIGH':
-				return {
-					color: 'red' as const,
-					variant: 'solid' as const,
-					text: 'alto',
-				};
-			case 'MEDIUM':
-				return {
-					color: 'amber' as const,
-					variant: 'solid' as const,
-					text: 'medio',
-				};
-			case 'LOW':
-				return {
-					color: 'green' as const,
-					variant: 'solid' as const,
-					text: 'bajo',
-				};
-			default:
-				return {
-					color: 'gray' as const,
-					variant: 'soft' as const,
-					text: 'sin clasificar',
-				};
-		}
-	};
 
 	const anonymizeRut = (rut: string) => {
 		return rut.replace(/\d/g, '*');
@@ -207,7 +180,7 @@ export function DashboardTableView({
 		return (
 			<Flex gap='4' wrap='wrap'>
 				{patients.map((patient) => {
-					const priorityBadge = getPriorityBadge(patient.priority_level);
+					const priorityBadge = getPriorityBadgeProps(patient.priority_score);
 
 					return (
 						<Card
@@ -220,8 +193,7 @@ export function DashboardTableView({
 										{anonymizeName(patient.name)}
 									</Text>
 									<Badge
-										color={priorityBadge.color}
-										variant={priorityBadge.variant}
+										className={priorityBadge.chipClass}
 									>
 										{priorityBadge.text}
 									</Badge>
@@ -415,7 +387,7 @@ export function DashboardTableView({
 					</thead>
 					<tbody>
 						{patients.map((patient, index) => {
-							const priorityBadge = getPriorityBadge(patient.priority_level);
+							const priorityBadge = getPriorityBadgeProps(patient.priority_score);
 
 							return (
 								<tr
@@ -498,10 +470,8 @@ export function DashboardTableView({
 									{/* Priority Badge */}
 									<td style={{ padding: '8px', verticalAlign: 'middle' }}>
 										<Badge
-											color={priorityBadge.color}
-											variant={priorityBadge.variant}
+											className={priorityBadge.chipClass}
 											size='1'
-											style={{ fontSize: '12px' }}
 										>
 											{priorityBadge.text}
 										</Badge>

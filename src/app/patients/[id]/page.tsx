@@ -12,8 +12,9 @@ import {
 } from '@radix-ui/themes';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CHILEAN_HEALTH_MARKERS } from '@/lib/pdf-parsing/spanish-health-markers';
+import { getPriorityBadgeProps } from '@/lib/utils/priority';
 
 interface Patient {
 	id: string;
@@ -79,13 +80,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		}
 	}, [status, router]);
 
-	useEffect(() => {
-		if (session && patientId) {
-			fetchPatientData();
-		}
-	}, [session, patientId]);
-
-	const fetchPatientData = async () => {
+	const fetchPatientData = useCallback(async () => {
 		try {
 			setLoading(true);
 
@@ -119,7 +114,13 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [patientId]);
+
+	useEffect(() => {
+		if (session && patientId) {
+			fetchPatientData();
+		}
+	}, [session, patientId, fetchPatientData]);
 
 	const updateContactStatus = async (newStatus: string) => {
 		if (!patientId) return;
@@ -143,19 +144,6 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		}
 	};
 
-	const getPriorityColor = (score: number) => {
-		if (score >= 8) return 'red';
-		if (score >= 5) return 'orange';
-		if (score >= 3) return 'yellow';
-		return 'green';
-	};
-
-	const getPriorityLabel = (score: number) => {
-		if (score >= 8) return 'CRÍTICO';
-		if (score >= 5) return 'ALTO';
-		if (score >= 3) return 'MEDIO';
-		return 'BAJO';
-	};
 
 	const getContactStatusColor = (status: string) => {
 		switch (status) {
@@ -493,7 +481,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 											Prioridad
 										</Text>
 										<Badge
-											className={`chip-${getPriorityColor(patient.priority_score) === 'red' ? 'error' : getPriorityColor(patient.priority_score) === 'orange' ? 'warning' : getPriorityColor(patient.priority_score) === 'yellow' ? 'info' : 'success'}`}
+											className={getPriorityBadgeProps(patient.priority_score).chipClass}
 											size='1'
 											style={{
 												width: '3.875rem',
@@ -503,7 +491,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												alignItems: 'center',
 											}}
 										>
-											{getPriorityLabel(patient.priority_score).toLowerCase()}
+											{getPriorityBadgeProps(patient.priority_score).text}
 										</Badge>
 									</Flex>
 									<Flex align='center' gap='2'>
