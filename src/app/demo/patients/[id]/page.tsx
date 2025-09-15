@@ -10,7 +10,6 @@ import {
 	Flex,
 	Text,
 } from '@radix-ui/themes';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { CHILEAN_HEALTH_MARKERS } from '@/lib/pdf-parsing/spanish-health-markers';
@@ -52,14 +51,13 @@ interface LabResult {
 	created_at: string;
 }
 
-interface PatientDetailPageProps {
+interface DemoPatientDetailPageProps {
 	params: Promise<{
 		id: string;
 	}>;
 }
 
-export default function PatientDetailPage({ params }: PatientDetailPageProps) {
-	const { data: session, status } = useSession();
+export default function DemoPatientDetailPage({ params }: DemoPatientDetailPageProps) {
 	const router = useRouter();
 	const [patient, setPatient] = useState<Patient | null>(null);
 	const [labResults, setLabResults] = useState<LabResult[]>([]);
@@ -74,39 +72,67 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		});
 	}, [params]);
 
-	useEffect(() => {
-		if (status === 'unauthenticated') {
-			router.push('/auth/signin');
-		}
-	}, [status, router]);
+	// DEMO ANONYMIZATION FUNCTIONS - Keep data private for public demo
+	const anonymizeRut = (rut: string) => {
+		return rut.replace(/\d/g, '*');
+	};
+
+	const anonymizeName = (name: string) => {
+		return name
+			.split(' ')
+			.map((part) =>
+				part.length > 0
+					? part[0] + '*'.repeat(Math.max(part.length - 1, 3))
+					: part
+			)
+			.join(' ');
+	};
+
+	const anonymizeProfesional = (profesional: string | null | undefined) => {
+		if (!profesional) return 'N/A';
+		return profesional
+			.split(' ')
+			.map((part) =>
+				part.length > 0
+					? part[0] + '*'.repeat(Math.max(part.length - 1, 3))
+					: part
+			)
+			.join(' ');
+	};
+
+	const anonymizeProcedencia = (procedencia: string | null | undefined) => {
+		if (!procedencia) return 'N/A';
+		return procedencia
+			.split(' ')
+			.map((part) =>
+				part.length > 0
+					? part[0] + '*'.repeat(Math.max(part.length - 1, 3))
+					: part
+			)
+			.join(' ');
+	};
 
 	const fetchPatientData = useCallback(async () => {
 		try {
 			setLoading(true);
 
-			// Fetch patient data
-			const patientResponse = await fetch(`/api/patients/${patientId}`);
-			if (!patientResponse.ok) {
+			if (!patientId) {
+				throw new Error('ID de paciente no proporcionado');
+			}
+
+			// Fetch data from demo API (no auth required)
+			const response = await fetch(`/api/demo/patients/${patientId}`);
+			
+			if (!response.ok) {
 				throw new Error('No se pudo cargar la información del paciente');
 			}
-			const patientData = await patientResponse.json();
-			setPatient(patientData);
 
-			// Fetch lab results
-			const labResponse = await fetch(`/api/patients/${patientId}/lab-results`);
-			if (labResponse.ok) {
-				const labData = await labResponse.json();
-				setLabResults(labData);
-			}
+			const data = await response.json();
+			
+			setPatient(data.patient);
+			setLabResults(data.labResults || []);
+			setLabReport(data.labReport);
 
-			// Fetch lab report metadata (folio, dates, professional info)
-			const reportResponse = await fetch(
-				`/api/patients/${patientId}/lab-report`
-			);
-			if (reportResponse.ok) {
-				const reportData = await reportResponse.json();
-				setLabReport(reportData);
-			}
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : 'Error al cargar los datos'
@@ -117,57 +143,13 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 	}, [patientId]);
 
 	useEffect(() => {
-		if (session && patientId) {
+		if (patientId) {
 			fetchPatientData();
 		}
-	}, [session, patientId, fetchPatientData]);
-
-	const updateContactStatus = async (newStatus: string) => {
-		if (!patientId) return;
-		try {
-			const response = await fetch(
-				`/api/patients/${patientId}/contact-status`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ status: newStatus }),
-				}
-			);
-
-			if (response.ok) {
-				setPatient((prev) =>
-					prev ? { ...prev, contact_status: newStatus } : null
-				);
-			}
-		} catch (err) {
-			console.error('Error updating contact status:', err);
-		}
-	};
+	}, [patientId, fetchPatientData]);
 
 
-	const getContactStatusColor = (status: string) => {
-		switch (status) {
-			case 'contacted':
-				return 'green';
-			case 'processed':
-				return 'blue';
-			default:
-				return 'orange';
-		}
-	};
-
-	const getContactStatusLabel = (status: string) => {
-		switch (status) {
-			case 'contacted':
-				return 'Contactado';
-			case 'processed':
-				return 'Procesado';
-			default:
-				return 'Pendiente';
-		}
-	};
-
-	if (status === 'loading' || loading) {
+	if (loading) {
 		return (
 			<DashboardLayout>
 				<Container size='1'>
@@ -182,10 +164,6 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 				</Container>
 			</DashboardLayout>
 		);
-	}
-
-	if (!session) {
-		return null;
 	}
 
 	if (error) {
@@ -233,8 +211,6 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		);
 	}
 
-	const abnormalResults = labResults.filter((result) => result.is_abnormal);
-	const normalResults = labResults.filter((result) => !result.is_abnormal);
 
 	// Dynamic helper functions using CHILEAN_HEALTH_MARKERS as single source of truth
 	const getLabUnit = (markerType: string): string => {
@@ -299,7 +275,6 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 		return partialMatch?.normalRange?.text || 'Consultar médico' // default
 	}
 
-
 	return (
 		<DashboardLayout style={{ backgroundColor: '#EFEFEF' }}>
 			<Box style={{ width: '100%' }}>
@@ -307,7 +282,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 					{/* Back Button - Outside main card */}
 					<Button
 						variant='ghost'
-						onClick={() => router.back()}
+						onClick={() => router.push('/demo')}
 						style={{
 							color: 'var(--labsense-blue)',
 							fontWeight: '700',
@@ -319,7 +294,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 							width: 'fit-content',
 						}}
 					>
-						← Back to Dashboard
+						← Volver a Demo Dashboard
 					</Button>
 
 					{/* Main Container Card */}
@@ -340,7 +315,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 								weight='bold'
 								style={{ color: 'var(--labsense-text-primary)' }}
 							>
-								Resultados Laboratorio
+								Resultados Laboratorio - Demo
 							</Text>
 							<Flex align='center' gap='2'>
 								<Text
@@ -361,6 +336,27 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 							</Flex>
 						</Flex>
 
+						{/* Demo Banner */}
+						<Card
+							style={{
+								backgroundColor: 'var(--mint-2)',
+								border: '1px solid var(--mint-6)',
+								padding: '0.75rem',
+								marginBottom: 'var(--space-3)',
+							}}
+						>
+							<Text
+								size='2'
+								style={{
+									color: 'var(--mint-11)',
+									textAlign: 'center',
+									display: 'block'
+								}}
+							>
+								✨ Vista de demostración con datos anonimizados para protección del paciente
+							</Text>
+						</Card>
+
 						{/* Section 2: Patient Info Card */}
 						<Card
 							style={{
@@ -377,10 +373,10 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 										weight='medium'
 										style={{ color: 'var(--labsense-text-primary)' }}
 									>
-										{patient.name}
+										{anonymizeName(patient.name)}
 									</Text>
 									<Text size='2' style={{ color: 'var(--gray-11)' }}>
-										RUT: {patient.rut}
+										RUT: {anonymizeRut(patient.rut)}
 									</Text>
 								</Flex>
 								<Flex direction='column' align='end' gap='1'>
@@ -459,7 +455,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												Profesional Solicitante:
 											</Text>
 											<Text size='2' style={{ color: 'var(--gray-11)' }}>
-												{labReport?.profesional_solicitante || 'N/A'}
+												{anonymizeProfesional(labReport?.profesional_solicitante)}
 											</Text>
 										</Flex>
 										<Flex align='center' gap='6'>
@@ -470,7 +466,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												Procedencia:
 											</Text>
 											<Text size='2' style={{ color: 'var(--gray-11)' }}>
-												{labReport?.procedencia || 'N/A'}
+												{anonymizeProcedencia(labReport?.procedencia)}
 											</Text>
 										</Flex>
 									</Flex>
@@ -545,7 +541,14 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 								}}
 							>
 								{/* Table Rows */}
-								{labResults.map((result, index) => {
+								{labResults
+									.sort((a, b) => {
+										// Sort abnormal results first, then normal
+										if (a.is_abnormal && !b.is_abnormal) return -1;
+										if (!a.is_abnormal && b.is_abnormal) return 1;
+										return 0;
+									})
+									.map((result, index) => {
 									const isAbnormal = result.is_abnormal;
 									const unit = getLabUnit(result.marker_type);
 									const normalRange = getNormalRange(result.marker_type);
@@ -585,7 +588,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												</Box>
 
 												{/* Result Value */}
-												<Box style={{ flex: '1', minWidth: '80px', textAlign: 'left' }}>
+												<Box style={{ flex: '1', textAlign: 'left', minWidth: '80px' }}>
 													<Text
 														size='2'
 														weight='medium'
@@ -600,7 +603,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												</Box>
 
 												{/* Unit */}
-												<Box style={{ flex: '1', minWidth: '60px', textAlign: 'left' }}>
+												<Box style={{ flex: '1', textAlign: 'left', minWidth: '60px' }}>
 													<Text
 														size='2'
 														style={{
@@ -613,7 +616,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 												</Box>
 
 												{/* Reference Range */}
-												<Box style={{ flex: '2', minWidth: '150px', textAlign: 'left' }}>
+												<Box style={{ flex: '2', textAlign: 'left', minWidth: '150px' }}>
 													<Text
 														size='2'
 														style={{
@@ -643,8 +646,8 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
 										No se encontraron resultados de laboratorio para este
 										paciente
 									</Text>
-									<Button color='mint' variant='solid' size='2'>
-										Subir Resultado PDF
+									<Button color='mint' variant='solid' size='2' disabled>
+										Subir Resultado PDF (Demo)
 									</Button>
 								</Flex>
 							</Card>

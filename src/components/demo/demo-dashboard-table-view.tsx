@@ -13,11 +13,10 @@ import {
 	Spinner,
 	Text,
 } from '@radix-ui/themes';
-import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { getPriorityBadgeProps } from '@/lib/utils/priority';
 
-interface DashboardTableViewProps {
+interface DemoDashboardTableViewProps {
 	limit?: number;
 	onPatientClick?: (patientId: string) => void;
 	filters?: PatientFilters;
@@ -25,14 +24,13 @@ interface DashboardTableViewProps {
 	onPatientCountChange?: (count: number) => void;
 }
 
-export function DashboardTableView({
+export function DemoDashboardTableView({
 	limit = 10,
 	onPatientClick,
 	filters,
 	viewMode = 'table',
 	onPatientCountChange,
-}: DashboardTableViewProps) {
-	const { data: session } = useSession();
+}: DemoDashboardTableViewProps) {
 	const [patients, setPatients] = useState<PrioritizedPatient[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -65,17 +63,25 @@ export function DashboardTableView({
 		if (onPatientClick) {
 			onPatientClick(patientId);
 		} else {
-			window.location.href = `/patients/${patientId}`;
+			// For demo, navigate to demo patient page
+			window.location.href = `/demo/patients/${patientId}`;
 		}
 	};
 
-
+	// DEMO ANONYMIZATION FUNCTIONS - Keep data private for public demo
 	const anonymizeRut = (rut: string) => {
-		return rut; // Show real RUT for authenticated dashboard
+		return rut.replace(/\d/g, '*');
 	};
 
 	const anonymizeName = (name: string) => {
-		return name; // Show real name for authenticated dashboard
+		return name
+			.split(' ')
+			.map((part) =>
+				part.length > 0
+					? part[0] + '*'.repeat(Math.max(part.length - 1, 3))
+					: part
+			)
+			.join(' ');
 	};
 
 	const formatDate = (date: string | Date | null | undefined) => {
@@ -214,15 +220,6 @@ export function DashboardTableView({
 									>
 										Ver Detalles
 									</Button>
-
-									{patient.pdf_file_path && patient.lab_report_id && (
-										<PDFViewerButton
-											pdfUrl={patient.pdf_file_path}
-											patientRut={patient.rut}
-											labReportId={patient.lab_report_id}
-											patientName={patient.name}
-										/>
-									)}
 								</Flex>
 							</Flex>
 						</Card>
@@ -374,7 +371,7 @@ export function DashboardTableView({
 									width: '60px',
 								}}
 							>
-								PDF
+								Demo
 							</th>
 						</tr>
 					</thead>
@@ -552,7 +549,7 @@ export function DashboardTableView({
 										</Text>
 									</td>
 
-									{/* PDF Button */}
+									{/* Demo Button */}
 									<td
 										style={{
 											padding: '8px',
@@ -561,24 +558,14 @@ export function DashboardTableView({
 											display: 'table-cell',
 										}}
 									>
-										<div
-											style={{
-												display: 'flex',
-												justifyContent: 'center',
-												alignItems: 'center',
-												width: '100%',
-											}}
+										<Button
+											size='1'
+											color='mint'
+											variant='soft'
+											onClick={() => handlePatientClick(patient.id)}
 										>
-											<PDFViewerButton
-												pdfUrl={
-													patient.pdf_file_path ||
-													'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-												}
-												patientRut={patient.rut}
-												labReportId={patient.lab_report_id || 'test-report'}
-												patientName={patient.name}
-											/>
-										</div>
+											Ver
+										</Button>
 									</td>
 								</tr>
 							);

@@ -120,19 +120,11 @@ export function PrioritizedPatientList({
   }
 
   const anonymizeRut = (rut: string) => {
-    // Anonymize RUT for display: 12.345.678-9 -> **.***.**-*
-    return rut.replace(/\d/g, '*').replace(/\*/g, (match, offset) => {
-      // Keep some digits visible for identification
-      if (offset === 0 || offset === rut.length - 1) return match
-      return '*'
-    })
+    return rut // Show real RUT for authenticated dashboard
   }
 
   const anonymizeName = (name: string) => {
-    // Anonymize name: Juan Pérez -> J*** P****
-    return name.split(' ').map(part => 
-      part.length > 0 ? part[0] + '*'.repeat(Math.max(part.length - 1, 3)) : part
-    ).join(' ')
+    return name // Show real name for authenticated dashboard
   }
 
   if (loading) {

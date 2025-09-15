@@ -2,13 +2,11 @@
 
 import { Card, Text, Button, Flex, Box, Grid } from '@radix-ui/themes'
 
-interface DashboardSummaryCardsProps {
-  userId: string
-  userEmail: string
+interface DemoDashboardSummaryCardsProps {
   patientCount?: number
 }
 
-export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: DashboardSummaryCardsProps) {
+export function DemoDashboardSummaryCards({ patientCount = 0 }: DemoDashboardSummaryCardsProps) {
   return (
     <Grid columns="1fr 2fr" gap="2" width="100%">
       {/* Lista de Espera Card */}
@@ -27,7 +25,7 @@ export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: D
                 marginBottom: '8px'
               }}
             >
-              Lista de Espera
+              Lista de Espera - Demo
             </Text>
             <Text 
               size="2" 
@@ -60,7 +58,7 @@ export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: D
                   marginBottom: '8px'
                 }}
               >
-                Procesar Resultados de Laboratorio
+                Procesar Resultados de Laboratorio - Demo
               </Text>
               <Text 
                 size="2" 
@@ -71,7 +69,7 @@ export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: D
                   lineHeight: '16px'
                 }}
               >
-                Sube resultados de laboratorio para análisis automático y priorización de pacientes.
+                Vista de demostración del procesamiento automático de resultados de laboratorio.
               </Text>
             </Box>
             <Button 
@@ -102,14 +100,14 @@ export function DashboardSummaryCards({ userId, userEmail, patientCount = 0 }: D
               }}
               asChild
             >
-              <a href="/upload">
+              <a href="/demo/upload">
                 <Flex align="center" gap="1">
                   <img 
                     src="/assets/icons/lucide/file-up.svg" 
                     alt="Upload" 
                     style={{ width: '20px', height: '20px' }}
                   />
-                  Cargar PDF Resultados
+                  Demo Cargar PDF
                 </Flex>
               </a>
             </Button>
